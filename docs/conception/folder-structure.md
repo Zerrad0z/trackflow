@@ -145,13 +145,3 @@ trackflow-frontend/
 │   ├── hooks/
 │   ├── context/
 │   └── utils/
-
-
-module/
-├── controller/   → HTTP layer only, no logic
-├── service/      → all business logic lives here
-├── repository/   → database access only
-├── entity/       → JPA entities mapping to DB tables
-├── dto/          → what goes in/out of the API
-├── consumer/     → RabbitMQ listeners (async)
-└── event/        → event objects published to RabbitMQ
