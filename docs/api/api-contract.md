@@ -29,7 +29,7 @@ Authorization: Bearer <token>
 **Request:**
 ```json
 {
-  "email": "john@trackflow.com",
+  "email": "khalid@trackflow.com",
   "password": "secret"
 }
 ```
@@ -40,8 +40,8 @@ Authorization: Bearer <token>
   "token": "eyJhbGciOiJIUzI1NiJ9...",
   "user": {
     "id": "uuid",
-    "full_name": "John Doe",
-    "email": "john@trackflow.com",
+    "full_name": "Khalid Salhi",
+    "email": "khalid@trackflow.com",
     "role": "FIELD_SUPERVISOR"
   }
 }
@@ -66,8 +66,8 @@ Authorization: Bearer <token>
 ```json
 {
   "id": "uuid",
-  "full_name": "John Doe",
-  "email": "john@trackflow.com",
+  "full_name": "Khalid Salhi",
+  "email": "khalid@trackflow.com",
   "role": "FIELD_SUPERVISOR",
   "is_active": true,
   "created_at": "2026-01-01T10:00:00Z"
@@ -89,8 +89,8 @@ Authorization: Bearer <token>
   "content": [
     {
       "id": "uuid",
-      "full_name": "John Doe",
-      "email": "john@trackflow.com",
+      "full_name": "Khalid Salhi",
+      "email": "khalid@trackflow.com",
       "role": "FIELD_SUPERVISOR",
       "is_active": true,
       "created_at": "2026-01-01T10:00:00Z"
@@ -111,8 +111,8 @@ Authorization: Bearer <token>
 **Request:**
 ```json
 {
-  "full_name": "Jane Smith",
-  "email": "jane@trackflow.com",
+  "full_name": "Hajar Zaimi",
+  "email": "hajar@trackflow.com",
   "password": "temp_password",
   "role": "MANAGER"
 }
@@ -122,8 +122,8 @@ Authorization: Bearer <token>
 ```json
 {
   "id": "uuid",
-  "full_name": "Jane Smith",
-  "email": "jane@trackflow.com",
+  "full_name": "Hajar Zaimi",
+  "email": "hajar@trackflow.com",
   "role": "MANAGER",
   "is_active": true,
   "created_at": "2026-01-01T10:00:00Z"
@@ -145,8 +145,8 @@ Authorization: Bearer <token>
 **Request:**
 ```json
 {
-  "full_name": "Jane Smith Updated",
-  "email": "jane.updated@trackflow.com"
+  "full_name": "Hajar Zaimi Updated",
+  "email": "hajar.updated@trackflow.com"
 }
 ```
 
@@ -224,7 +224,7 @@ form_type: LETTRE_SOMMATION_BILLET | LETTRE_SOMMATION_CARTE | RAPPORT_M
   "scan_url": "/files/forms/uuid.pdf",
   "uploaded_by": {
     "id": "uuid",
-    "full_name": "John Doe"
+    "full_name": "Khalid Salhi"
   },
   "uploaded_at": "2026-01-01T10:00:00Z",
   "confirmed_at": null,
@@ -270,7 +270,7 @@ form_type: LETTRE_SOMMATION_BILLET | LETTRE_SOMMATION_CARTE | RAPPORT_M
   "confirmed_at": "2026-01-01T14:30:00Z",
   "confirmed_by": {
     "id": "uuid",
-    "full_name": "John Doe"
+    "full_name": "Khalid Salhi"
   }
 }
 ```
@@ -495,7 +495,7 @@ form_type: LETTRE_SOMMATION_BILLET | LETTRE_SOMMATION_CARTE | RAPPORT_M
       "action": "CONFIRMED",
       "performed_by": {
         "id": "uuid",
-        "full_name": "John Doe"
+        "full_name": "Khalid Salhi"
       },
       "old_value": { "status": "PENDING_CONFIRMATION" },
       "new_value": { "status": "CONFIRMED" },
