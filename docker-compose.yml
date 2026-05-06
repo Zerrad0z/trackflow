@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: trackflow-postgres
+    environment:
+      POSTGRES_DB: trackflow
+      POSTGRES_USER: trackflow
+      POSTGRES_PASSWORD: trackflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - trackflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trackflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: trackflow-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - trackflow-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+
+networks:
+  trackflow-network:
+    driver: bridge
