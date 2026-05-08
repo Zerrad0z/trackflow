@@ -12,25 +12,25 @@ import java.util.UUID;
 public class User {
 
     @Id @GeneratedValue(strategy = GenerationType.UUID)
-    UUID id;
+    private UUID id;
 
-    String fullName;
+    private String fullName;
 
     @Column(nullable = false, unique = true)
-    String email;
+    private String email;
 
     @Column(name = "password_hash", nullable = false)
-    String password;
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    UserRole role;
+    private UserRole role;
 
     @Column(nullable = false)
-    Boolean isActive = true;
+    private Boolean isActive = true;
 
     @Column(nullable = false, updatable = false)
-    LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-    LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }

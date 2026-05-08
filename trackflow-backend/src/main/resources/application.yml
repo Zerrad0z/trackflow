@@ -51,4 +51,4 @@ jwt:
 logging:
   level:
     com.trackflow: DEBUG
-    org.springframework.security: INFO
+    org.springframework.security: DEBUG
