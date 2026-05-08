@@ -19,7 +19,7 @@ public class User {
     @Column(nullable = false, unique = true)
     String email;
 
-    @Column(nullable = false)
+    @Column(name = "password_hash", nullable = false)
     String password;
 
     @Enumerated(EnumType.STRING)
