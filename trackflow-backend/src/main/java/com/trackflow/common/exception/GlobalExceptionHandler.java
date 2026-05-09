@@ -52,4 +52,10 @@ public class GlobalExceptionHandler {
         body.put("message", message);
         return ResponseEntity.status(status).body(body);
     }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateEmail(
+            DuplicateEmailException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
 }
