@@ -2,6 +2,8 @@ package com.trackflow.module.user.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -23,6 +25,7 @@ public class User {
     private String password;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false)
     private UserRole role;
 
