@@ -4,9 +4,14 @@ import com.trackflow.common.exception.InvalidCredentialsException;
 import com.trackflow.module.auth.dto.LoginRequest;
 import com.trackflow.module.auth.dto.LoginResponse;
 import com.trackflow.module.auth.security.JwtUtils;
+import com.trackflow.module.user.dto.UserMapper;
+import com.trackflow.module.user.dto.UserResponse;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.repository.UserRepository;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,28 +22,35 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final UserMapper userMapper;
 
     @Override
     public LoginResponse login(LoginRequest request) {
-        // 1. Find user by email
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new InvalidCredentialsException("User not found"));
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
 
-        // 2. Validate password
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new InvalidCredentialsException("Invalid credentials");
         }
 
-        // 3. Generate JWT token with role
         String token = jwtUtils.generateToken(user);
 
-        // 4. Return response DTO with role
         return new LoginResponse(
                 token,
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole()
+                userMapper.toResponse(user)
         );
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponse getProfile() {
+        Authentication authentication = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
+
+        User user = (User) authentication.getPrincipal();
+
+        return userMapper.toResponse(user);
+    }
+
 }
