@@ -52,3 +52,7 @@ logging:
   level:
     com.trackflow: DEBUG
     org.springframework.security: DEBUG
+
+app:
+  storage:
+    upload-dir: uploads/forms
