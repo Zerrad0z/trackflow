@@ -3,9 +3,9 @@ spring:
     name: trackflow-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/trackflow
-    username: ${DB_USERNAME:trackflow}
-    password: ${DB_PASSWORD:trackflow}
+    url: jdbc:postgresql://ep-wild-lab-abd6keo7.eu-west-2.aws.neon.tech/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_kDxnfvcq7d0V
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -38,6 +38,10 @@ spring:
           auth: true
           starttls:
             enable: true
+
+app:
+  storage:
+    upload-dir: uploads
 
 server:
   port: 8080

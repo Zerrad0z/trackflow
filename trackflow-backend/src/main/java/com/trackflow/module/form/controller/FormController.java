@@ -1,0 +1,75 @@
+package com.trackflow.module.form.controller;
+
+import com.trackflow.module.form.dto.FormFieldResponse;
+import com.trackflow.module.form.dto.FormResponse;
+import com.trackflow.module.form.entity.FormType;
+import com.trackflow.module.form.service.FormService;
+import com.trackflow.module.user.entity.User;
+import com.trackflow.module.user.entity.UserRole;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/forms")
+@RequiredArgsConstructor
+public class FormController {
+
+    private final FormService formService;
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('FIELD_SUPERVISOR')")
+    public ResponseEntity<FormResponse> uploadForm(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("formType") FormType formType) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(formService.uploadForm(file, formType));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<Page<FormResponse>> getForms(Pageable pageable) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User user = (User) auth.getPrincipal();
+
+        if (user.getRole() == UserRole.FIELD_SUPERVISOR) {
+            return ResponseEntity.ok(formService.getMyForms(pageable));
+        }
+        return ResponseEntity.ok(formService.getAllForms(pageable));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<FormResponse> getFormById(@PathVariable UUID id) {
+        return ResponseEntity.ok(formService.getFormById(id));
+    }
+
+    @GetMapping("/{id}/fields")
+    @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER')")
+    public ResponseEntity<List<FormFieldResponse>> getFormFields(@PathVariable UUID id) {
+        return ResponseEntity.ok(formService.getFormFields(id));
+    }
+
+    @PatchMapping("/{id}/confirm")
+    @PreAuthorize("hasRole('FIELD_SUPERVISOR')")
+    public ResponseEntity<FormResponse> confirmForm(@PathVariable UUID id) {
+        return ResponseEntity.ok(formService.confirmForm(id));
+    }
+
+    @PatchMapping("/{id}/archive")
+    @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER')")
+    public ResponseEntity<FormResponse> archiveForm(@PathVariable UUID id) {
+        return ResponseEntity.ok(formService.archiveForm(id));
+    }
+}
