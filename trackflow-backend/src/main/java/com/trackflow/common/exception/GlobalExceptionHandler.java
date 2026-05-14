@@ -58,4 +58,10 @@ public class GlobalExceptionHandler {
             DuplicateEmailException ex) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
     }
+
+    @ExceptionHandler(InvalidOperationException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidOperation(
+            InvalidOperationException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
 }
