@@ -2,21 +2,23 @@ package com.trackflow.module.form.service;
 
 import com.trackflow.common.exception.InvalidOperationException;
 import com.trackflow.common.exception.ResourceNotFoundException;
+import com.trackflow.config.RabbitMQConfig;
 import com.trackflow.module.form.dto.FormFieldResponse;
 import com.trackflow.module.form.dto.FormMapper;
 import com.trackflow.module.form.dto.FormResponse;
 import com.trackflow.module.form.entity.Form;
 import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.entity.FormType;
+import com.trackflow.module.form.event.FormSubmittedEvent;
 import com.trackflow.module.form.repository.FormFieldRepository;
 import com.trackflow.module.form.repository.FormRepository;
-import com.trackflow.module.user.dto.UserResponse;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class FormServiceImpl implements FormService {
 
@@ -34,6 +37,7 @@ public class FormServiceImpl implements FormService {
     private final FormFieldRepository formFieldRepository;
     private final StorageService storageService;
     private final FormMapper formMapper;
+    private final RabbitTemplate rabbitTemplate;
 
     @Override
     @Transactional
@@ -51,7 +55,24 @@ public class FormServiceImpl implements FormService {
                 .uploadedBy(currentUser)
                 .build();
 
-        return formMapper.toResponse(formRepository.save(form));
+        Form savedForm = formRepository.save(form);
+
+        FormSubmittedEvent event = new FormSubmittedEvent(
+                savedForm.getId(),
+                currentUser.getId(),
+                savedForm.getFormType().name(),
+                savedForm.getScanUrl()
+        );
+
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.FORM_EXCHANGE,
+                RabbitMQConfig.FORM_SUBMITTED_ROUTING_KEY,
+                event
+        );
+
+        log.info("Published form.submitted event for form: {}", savedForm.getId());
+
+        return formMapper.toResponse(savedForm);
     }
 
     @Override
