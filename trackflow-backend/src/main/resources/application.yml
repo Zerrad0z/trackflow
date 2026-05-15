@@ -2,12 +2,6 @@ spring:
   application:
     name: trackflow-backend
 
-  datasource:
-    url: jdbc:postgresql://ep-wild-lab-abd6keo7.eu-west-2.aws.neon.tech/neondb?sslmode=require
-    username: neondb_owner
-    password: npg_kDxnfvcq7d0V
-    driver-class-name: org.postgresql.Driver
-
   jpa:
     hibernate:
       ddl-auto: validate
@@ -49,7 +43,6 @@ server:
     context-path: /api/v1
 
 jwt:
-  secret: ${JWT_SECRET:trackflow-secret-key-change-in-production}
   expiration: 86400000
 
 logging:
