@@ -2,11 +2,16 @@ package com.trackflow.module.validation.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.trackflow.common.exception.InvalidOperationException;
+import com.trackflow.common.exception.ResourceNotFoundException;
+import com.trackflow.module.form.entity.FieldStatus;
 import com.trackflow.module.form.entity.Form;
 import com.trackflow.module.form.entity.FormField;
 import com.trackflow.module.form.repository.FormFieldRepository;
 import com.trackflow.module.form.repository.FormRepository;
 import com.trackflow.module.validation.dto.FieldSuggestionResponse;
+import com.trackflow.module.validation.dto.SuggestionDecisionRequest;
+import com.trackflow.module.validation.dto.SuggestionDecisionResponse;
 import com.trackflow.module.validation.dto.ValidationResponse;
 import com.trackflow.module.validation.entity.AiValidation;
 import com.trackflow.module.validation.entity.FieldSuggestion;
@@ -112,6 +117,65 @@ public class ValidationServiceImpl implements ValidationService {
             log.error("Validation failed for form {}: {}", formId, e.getMessage());
             throw new RuntimeException("Validation processing failed for form: " + formId, e);
         }
+    }
+
+    @Override
+    @Transactional
+    public SuggestionDecisionResponse decideSuggestion(
+            UUID suggestionId,
+            SuggestionDecisionRequest request) {
+
+        // 1. Find the suggestion
+        FieldSuggestion suggestion = fieldSuggestionRepository.findById(suggestionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Suggestion not found: " + suggestionId));
+
+        // 2. Check decision not already made
+        if (suggestion.getDecision() != SuggestionDecision.PENDING) {
+            throw new InvalidOperationException(
+                    "Decision already made for this suggestion");
+        }
+
+        // 3. Get the related FormField
+        FormField formField = suggestion.getFormField();
+
+        // 4. Determine confirmed value based on decision
+        String confirmedValue = switch (request.decision()) {
+            case ACCEPTED -> suggestion.getSuggestedValue();
+            case REJECTED -> formField.getExtractedValue();
+            case OVERRIDDEN -> {
+                if (request.overrideValue() == null || request.overrideValue().isBlank()) {
+                    throw new InvalidOperationException(
+                            "Override value is required when decision is OVERRIDDEN");
+                }
+                yield request.overrideValue();
+            }
+            default -> throw new InvalidOperationException(
+                    "Invalid decision: " + request.decision());
+        };
+
+        // 5. Update FormField confirmedValue
+        formField.setConfirmedValue(confirmedValue);
+        formField.setFieldStatus(FieldStatus.valueOf(request.decision().name()));
+
+        // 6. Update suggestion
+        suggestion.setDecision(request.decision());
+        suggestion.setDecidedAt(LocalDateTime.now());
+
+        // 7. Save both
+        formFieldRepository.save(formField);
+        fieldSuggestionRepository.save(suggestion);
+
+        log.info("Suggestion {} decided as {} by encadrant",
+                suggestionId, request.decision());
+
+        return new SuggestionDecisionResponse(
+                suggestion.getId(),
+                formField.getFieldName(),
+                confirmedValue,
+                suggestion.getDecision(),
+                suggestion.getDecidedAt()
+        );
     }
 
     @Override
