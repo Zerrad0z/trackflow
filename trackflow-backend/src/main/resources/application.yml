@@ -2,6 +2,11 @@ spring:
   application:
     name: trackflow-backend
 
+  datasource:
+    hikari:
+      max-lifetime: 600000
+      keepalive-time: 30000
+
   jpa:
     hibernate:
       ddl-auto: validate
