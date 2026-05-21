@@ -9,10 +9,7 @@ import com.trackflow.module.form.entity.Form;
 import com.trackflow.module.form.entity.FormField;
 import com.trackflow.module.form.repository.FormFieldRepository;
 import com.trackflow.module.form.repository.FormRepository;
-import com.trackflow.module.validation.dto.FieldSuggestionResponse;
-import com.trackflow.module.validation.dto.SuggestionDecisionRequest;
-import com.trackflow.module.validation.dto.SuggestionDecisionResponse;
-import com.trackflow.module.validation.dto.ValidationResponse;
+import com.trackflow.module.validation.dto.*;
 import com.trackflow.module.validation.entity.AiValidation;
 import com.trackflow.module.validation.entity.FieldSuggestion;
 import com.trackflow.module.validation.entity.SuggestionDecision;
@@ -21,6 +18,7 @@ import com.trackflow.module.validation.repository.AiValidationRepository;
 import com.trackflow.module.validation.repository.FieldSuggestionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +38,8 @@ public class ValidationServiceImpl implements ValidationService {
     private final FieldSuggestionRepository fieldSuggestionRepository;
     private final GroqService groqService;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
+
 
     @Override
     @Transactional
@@ -107,6 +107,14 @@ public class ValidationServiceImpl implements ValidationService {
             // 8. Update validation status to COMPLETED
             validation.setStatus(ValidationStatus.COMPLETED);
             aiValidationRepository.save(validation);
+            eventPublisher.publishEvent(new ValidationCompleteEvent(
+                    form.getId(),
+                    validation.getId(),
+                    form.getUploadedBy().getId(),
+                    form.getFormType().name(),
+                    ValidationStatus.COMPLETED,
+                    fieldSuggestions.size()
+            ));
 
             log.info("Validation completed for form {} — {} suggestions saved",
                     formId, fieldSuggestions.size());
