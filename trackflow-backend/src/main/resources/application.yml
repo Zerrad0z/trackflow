@@ -40,7 +40,8 @@ spring:
 
 app:
   storage:
-    upload-dir: uploads
+    upload-dir: uploads/forms
+    reports-dir: uploads/reports
 
 server:
   port: 8080
