@@ -17,6 +17,7 @@ import com.trackflow.module.user.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +39,8 @@ public class FormServiceImpl implements FormService {
     private final StorageService storageService;
     private final FormMapper formMapper;
     private final RabbitTemplate rabbitTemplate;
+    private final ApplicationEventPublisher eventPublisher;
+
 
     @Override
     @Transactional
@@ -64,11 +67,12 @@ public class FormServiceImpl implements FormService {
                 savedForm.getScanUrl()
         );
 
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.FORM_EXCHANGE,
-                RabbitMQConfig.FORM_SUBMITTED_ROUTING_KEY,
-                event
-        );
+        eventPublisher.publishEvent(new FormSubmittedEvent(
+                savedForm.getId(),
+                currentUser.getId(),
+                savedForm.getFormType().name(),
+                savedForm.getScanUrl()
+        ));
 
         log.info("Published form.submitted event for form: {}", savedForm.getId());
 
