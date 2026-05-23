@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useQuery } from '@tanstack/react-query'
+import { notificationService } from '../../services/notificationService'
 import {
   LayoutDashboard,
   FileText,
@@ -22,6 +24,14 @@ export default function Layout({ children }) {
     logout()
     navigate('/login')
   }
+
+  const { data: unreadData } = useQuery({
+  queryKey: ['unread-count'],
+  queryFn: () => notificationService.getUnreadCount().then(r => r.data),
+  refetchInterval: 30000 // refresh every 30 seconds
+})
+
+const unreadCount = unreadData?.count || 0
 
   const navItems = [
     {
@@ -48,6 +58,12 @@ export default function Layout({ children }) {
       roles: ['ADMIN'],
       icon: <Users size={20} />
     },
+    {
+  label: 'Notifications',
+  path: '/notifications',
+  roles: ['FIELD_SUPERVISOR', 'MANAGER', 'ADMIN'],
+  icon: <Bell size={20} />
+}
   ]
 
   const visibleItems = navItems.filter(item =>
@@ -125,14 +141,19 @@ export default function Layout({ children }) {
               || 'TrackFlow'}
           </h1>
           <div className="flex items-center gap-4">
-            <button className="relative text-gray-500 hover:text-gray-700">
-              <Bell size={20} />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white
-                               text-xs rounded-full w-4 h-4 flex items-center
-                               justify-center">
-                3
-              </span>
-            </button>
+          <button
+  onClick={() => navigate('/notifications')}
+  className="relative text-gray-500 hover:text-gray-700"
+>
+  <Bell size={20} />
+  {unreadCount > 0 && (
+    <span className="absolute -top-1 -right-1 bg-red-500 text-white
+                     text-xs rounded-full w-4 h-4 flex items-center
+                     justify-center">
+      {unreadCount}
+    </span>
+  )}
+</button>
             <span className="text-sm text-gray-500">{user?.fullName}</span>
           </div>
         </header>

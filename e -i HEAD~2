@@ -1,0 +1,37 @@
+[33mba55a85[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/SCRUM-48-ai-entities[m[33m)[m SCRUM-48: Add AiValidation and FieldSuggestion entities and repositories and fixed grokapi key
+[33m94ff8ac[m SCRUM-49: Add AiValidation and FieldSuggestion entities and repositories
+[33m2eea865[m[33m ([m[1;32mdev[m[33m)[m Merge pull request #17 from Zerrad0z/feature/SCRUM-46-rabbitmq-event
+[33mb051b1d[m[33m ([m[1;32mfeature/SCRUM-46-rabbitmq-event[m[33m)[m SCRUM-46: Add RabbitMQ config and publish form.submitted event
+[33m4995080[m Merge pull request #16 from Zerrad0z/feature/SCRUM-41-form-list
+[33mc189e99[m[33m ([m[1;32mfeature/SCRUM-41-form-list[m[33m)[m SCRUM-41 SCRUM-42 SCRUM-43 SCRUM-44: Add form list, detail, confirm and archive endpoints
+[33ma9cc802[m Merge pull request #15 from Zerrad0z/feature/SCRUM-41-form-upload
+[33md891123[m[33m ([m[1;32mfeature/SCRUM-41-form-upload[m[33m)[m SCRUM-40: Add form upload endpoint with file storage
+[33mebe550a[m Merge pull request #14 from Zerrad0z/feature/SCRUM-38-form-entities
+[33m81de05f[m[33m ([m[1;32mfeature/SCRUM-38-form-entities[m[33m)[m SCRUM-39: Add Form and FormField entities, repositories and mapper
+[33mf28a71f[m Merge pull request #13 from Zerrad0z/feature/SCRUM-34-create-user
+[33m992e9e1[m[33m ([m[1;32mfeature/SCRUM-34-create-user[m[33m)[m SCRUM-34 SCRUM-35: Add user management endpoints with role and status control
+[33md4a8467[m Merge pull request #12 from Zerrad0z/feature/SCRUM-33-profile-endpoint
+[33me31a53a[m[33m ([m[1;32mfeature/SCRUM-33-profile-endpoint[m[33m)[m SCRUM-33: Add profile endpoint, GlobalExceptionHandler and MapStruct mappers
+[33m74051e0[m Merge pull request #11 from Zerrad0z/feature/SCRUM-32-login-endpoint
+[33m046dfc3[m[33m ([m[1;32mfeature/SCRUM-32-login-endpoint[m[33m)[m SCRUM-32: Implement login endpoint with JWT authentication
+[33m7d879d6[m Merge pull request #10 from Zerrad0z/feature/SCRUM-36-jwt-security
+[33md39e838[m[33m ([m[1;32mfeature/SCRUM-36-jwt-security[m[33m)[m SCRUM-36: Add JWT security config, JwtUtils and JwtAuthFilter
+[33ma0fa973[m Merge pull request #9 from Zerrad0z/feature/SCRUM-37-user-entity
+[33me5f67f9[m[33m ([m[1;32mfeature/SCRUM-37-user-entity[m[33m)[m SCRUM-37: Add User entity, UserRole enum and UserRepository
+[33m1b1e1a0[m Merge branch 'main' into dev
+[33m2f07934[m docker compose setup
+[33madf4cb3[m Merge pull request #7 from Zerrad0z/feature/SCRUM-12-spring-boot-init-
+[33m189871c[m[33m ([m[1;32mfeature/SCRUM-12-spring-boot-init-[m[33m)[m SCRUM-12: Initialize Spring Boot project structure
+[33m9d880e8[m[33m ([m[1;32mfeature/SCRUM-15-docker-setup[m[33m)[m Merge pull request #6 from Zerrad0z/feature/SCRUM-16-react-init
+[33m40abf16[m[33m ([m[1;32mfeature/SCRUM-16-react-init[m[33m)[m SCRUM-16: Initialize React project with Vite, Tailwind and folder structure
+[33m6e035a9[m Merge pull request #4 from Zerrad0z/feature/SCRUM-12-spring-boot-init
+[33m1892b92[m[33m ([m[1;31morigin/feature/SCRUM-12-spring-boot-init[m[33m, [m[1;32mfeature/SCRUM-12-spring-boot-init[m[33m)[m SCRUM-12: Initialize Spring Boot project structure
+[33mab460a0[m .
+[33m57ad930[m[33m ([m[1;32mfeature/SCRUM-24-folder-structure[m[33m)[m SCRUM-24: Add folder structure definition
+[33macf5d21[m SCRUM-24: Add folder structure definition
+[33m75fb649[m SCRUM-24: Add folder structure definition
+[33m4f32e56[m Merge pull request #2 from Zerrad0z/feature/SCRUM-23-api-contract
+[33mc0db926[m[33m ([m[1;32mfeature/SCRUM-23-api-contract[m[33m)[m SCRUM-23: Add API endpoints contract
+[33meaa9ff7[m Merge pull request #1 from Zerrad0z/feature/SCRUM-22-db-schema
+[33mff3e354[m[33m ([m[1;32mfeature/SCRUM-22-db-schema[m[33m)[m SCRUM-22: Add database migration scripts and docs structure
+[33m6e6972c[m Initial commit
