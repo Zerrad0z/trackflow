@@ -3,6 +3,10 @@ import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import LoginPage from './pages/auth/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import FormsPage from './pages/forms/FormsPage'
+import ReportsPage from './pages/reports/ReportsPage'
+import UsersPage from './pages/admin/UsersPage'
+import FormDetailPage from './pages/forms/FormDetailPage'
 
 
 function App() {
@@ -17,20 +21,25 @@ function App() {
   </ProtectedRoute>
 } />
           <Route path="/forms" element={
-            <ProtectedRoute roles={['FIELD_SUPERVISOR', 'MANAGER']}>
-              <div>Forms Page</div>
-            </ProtectedRoute>
-          } />
+  <ProtectedRoute roles={['FIELD_SUPERVISOR', 'MANAGER']}>
+    <FormsPage />
+  </ProtectedRoute>
+} />
+<Route path="/forms/:id" element={
+  <ProtectedRoute roles={['FIELD_SUPERVISOR', 'MANAGER']}>
+    <FormDetailPage />
+  </ProtectedRoute>
+} />
           <Route path="/users" element={
-            <ProtectedRoute roles={['ADMIN']}>
-              <div>Users Page</div>
-            </ProtectedRoute>
-          } />
-          <Route path="/reports" element={
-            <ProtectedRoute roles={['MANAGER', 'FIELD_SUPERVISOR']}>
-              <div>Reports Page</div>
-            </ProtectedRoute>
-          } />
+  <ProtectedRoute roles={['ADMIN']}>
+    <UsersPage />
+  </ProtectedRoute>
+} />
+         <Route path="/reports" element={
+  <ProtectedRoute roles={['FIELD_SUPERVISOR', 'MANAGER']}>
+    <ReportsPage />
+  </ProtectedRoute>
+} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </AuthProvider>
