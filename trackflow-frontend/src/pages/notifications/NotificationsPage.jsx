@@ -18,7 +18,9 @@ export default function NotificationsPage() {
     queryClient.invalidateQueries(['unread-count']) 
   }
 })
-
+/**
+ * handle mark all as read
+ */
  const markAllMutation = useMutation({
   mutationFn: () => notificationService.markAllAsRead(),
   onSuccess: () => {
