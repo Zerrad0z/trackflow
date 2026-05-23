@@ -78,14 +78,14 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public Page<NotificationResponse> getMyNotifications(Pageable pageable) {
-        User currentUser = getCurrentUser();
-        return notificationRepository.findByUser(currentUser, pageable)
-                .map(n -> new NotificationResponse(
-                        n.getId(), n.getMessage(), n.getIsRead(), n.getSentAt()));
-    }
+   @Override
+@Transactional(readOnly = true)
+public Page<NotificationResponse> getMyNotifications(Pageable pageable) {
+    User currentUser = getCurrentUser();
+    return notificationRepository.findByUserOrderBySentAtDesc(currentUser, pageable)
+            .map(n -> new NotificationResponse(
+                    n.getId(), n.getMessage(), n.getIsRead(), n.getSentAt()));
+}
 
     @Override
     @Transactional

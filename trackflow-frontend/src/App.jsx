@@ -7,6 +7,8 @@ import FormsPage from './pages/forms/FormsPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import UsersPage from './pages/admin/UsersPage'
 import FormDetailPage from './pages/forms/FormDetailPage'
+import NotificationsPage from './pages/notifications/NotificationsPage'
+
 
 
 function App() {
@@ -28,6 +30,11 @@ function App() {
 <Route path="/forms/:id" element={
   <ProtectedRoute roles={['FIELD_SUPERVISOR', 'MANAGER']}>
     <FormDetailPage />
+  </ProtectedRoute>
+} />
+<Route path="/notifications" element={
+  <ProtectedRoute>
+    <NotificationsPage />
   </ProtectedRoute>
 } />
           <Route path="/users" element={
