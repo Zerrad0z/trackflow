@@ -6,9 +6,7 @@ import com.trackflow.config.RabbitMQConfig;
 import com.trackflow.module.form.dto.FormFieldResponse;
 import com.trackflow.module.form.dto.FormMapper;
 import com.trackflow.module.form.dto.FormResponse;
-import com.trackflow.module.form.entity.Form;
-import com.trackflow.module.form.entity.FormStatus;
-import com.trackflow.module.form.entity.FormType;
+import com.trackflow.module.form.entity.*;
 import com.trackflow.module.form.event.FormSubmittedEvent;
 import com.trackflow.module.form.repository.FormFieldRepository;
 import com.trackflow.module.form.repository.FormRepository;
@@ -27,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -40,7 +39,8 @@ public class FormServiceImpl implements FormService {
     private final FormMapper formMapper;
     private final RabbitTemplate rabbitTemplate;
     private final ApplicationEventPublisher eventPublisher;
-
+    private final OcrService ocrService;
+    private final GroqExtractionService groqExtractionService;
 
     @Override
     @Transactional
@@ -48,8 +48,10 @@ public class FormServiceImpl implements FormService {
         User currentUser = (User) SecurityContextHolder
                 .getContext().getAuthentication().getPrincipal();
 
+        // 1. Store file
         String filePath = storageService.storeFile(file);
 
+        // 2. Create form
         Form form = Form.builder()
                 .formType(formType)
                 .formStatus(FormStatus.UPLOADED)
@@ -57,24 +59,67 @@ public class FormServiceImpl implements FormService {
                 .uploadedAt(LocalDateTime.now())
                 .uploadedBy(currentUser)
                 .build();
-
         Form savedForm = formRepository.save(form);
 
-        FormSubmittedEvent event = new FormSubmittedEvent(
-                savedForm.getId(),
-                currentUser.getId(),
-                savedForm.getFormType().name(),
-                savedForm.getScanUrl()
-        );
+        // 3. OCR extraction
+        try {
+            form.setFormStatus(FormStatus.OCR_PROCESSING);
+            formRepository.save(form);
 
+            String rawText = ocrService.extractText(filePath);
+
+            if (!rawText.isBlank()) {
+                // 4. Groq field extraction
+                List<Map<String, String>> extractedFields =
+                        groqExtractionService.extractFields(rawText, formType.name());
+
+                // 5. Save FormField records
+                List<FormField> fields = extractedFields.stream()
+                        .filter(f -> {
+                            String name = f.get("fieldName") != null
+                                    ? f.get("fieldName")
+                                    : f.get("field_name");
+                            return name != null && !name.isBlank();
+                        })
+                        .map(f -> {
+                            String name = f.get("fieldName") != null
+                                    ? f.get("fieldName")
+                                    : f.get("field_name");
+                            String value = f.get("value") != null
+                                    ? f.get("value")
+                                    : f.get("extractedValue");
+                            return FormField.builder()
+                                    .form(savedForm)
+                                    .fieldName(name)
+                                    .extractedValue(value)
+                                    .fieldStatus(FieldStatus.PENDING)
+                                    .createdAt(LocalDateTime.now())
+                                    .build();
+                        })
+                        .toList();
+
+                formFieldRepository.saveAll(fields);
+                log.info("Saved {} form fields for form {}",
+                        fields.size(), savedForm.getId());
+            }
+
+            // 6. Update status
+            form.setFormStatus(FormStatus.PENDING_VALIDATION);
+            formRepository.save(form);
+
+        } catch (Exception e) {
+            log.error("OCR/extraction failed for form {}: {}",
+                    savedForm.getId(), e.getMessage());
+            // Don't fail the upload — just keep UPLOADED status
+        }
+
+        // 7. Publish event
         eventPublisher.publishEvent(new FormSubmittedEvent(
                 savedForm.getId(),
                 currentUser.getId(),
                 savedForm.getFormType().name(),
                 savedForm.getScanUrl()
         ));
-
-        log.info("Published form.submitted event for form: {}", savedForm.getId());
 
         return formMapper.toResponse(savedForm);
     }
