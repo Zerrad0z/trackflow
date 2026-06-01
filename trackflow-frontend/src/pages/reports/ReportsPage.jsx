@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/common/Layout'
 import { reportService } from '../../services/reportService'
 import { Download, Plus, X, FileText } from 'lucide-react'
+import toast from 'react-hot-toast'
+
 
 export default function ReportsPage() {
   const [showGenerate, setShowGenerate] = useState(false)
@@ -16,12 +18,14 @@ export default function ReportsPage() {
   })
 
   const generateMutation = useMutation({
-    mutationFn: (data) => reportService.generateReport(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['reports'])
-      setShowGenerate(false)
-    }
-  })
+  mutationFn: (data) => reportService.generateReport(data),
+  onSuccess: () => {
+    queryClient.invalidateQueries(['reports'])
+    setShowGenerate(false)
+    toast.success('Report generated successfully!')
+  },
+  onError: () => toast.error('Failed to generate report')
+})
 
   const handleDownload = async (reportId, reportType) => {
     try {
