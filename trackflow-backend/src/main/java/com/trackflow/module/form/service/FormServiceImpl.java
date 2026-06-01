@@ -4,11 +4,13 @@ import com.trackflow.common.exception.InvalidOperationException;
 import com.trackflow.common.exception.ResourceNotFoundException;
 import com.trackflow.config.RabbitMQConfig;
 import com.trackflow.module.form.dto.FormFieldResponse;
+import com.trackflow.module.form.dto.FormFieldSchemaResponse;
 import com.trackflow.module.form.dto.FormMapper;
 import com.trackflow.module.form.dto.FormResponse;
 import com.trackflow.module.form.entity.*;
 import com.trackflow.module.form.event.FormSubmittedEvent;
 import com.trackflow.module.form.repository.FormFieldRepository;
+import com.trackflow.module.form.repository.FormFieldSchemaRepository;
 import com.trackflow.module.form.repository.FormRepository;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
@@ -41,6 +43,7 @@ public class FormServiceImpl implements FormService {
     private final ApplicationEventPublisher eventPublisher;
     private final OcrService ocrService;
     private final GroqExtractionService groqExtractionService;
+    private final FormFieldSchemaRepository formFieldSchemaRepository;
 
     @Override
     @Transactional
@@ -205,5 +208,21 @@ public class FormServiceImpl implements FormService {
         form.setFormStatus(FormStatus.ARCHIVED);
 
         return formMapper.toResponse(formRepository.save(form));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FormFieldSchemaResponse> getFormSchema(FormType formType) {
+        return formFieldSchemaRepository
+                .findByFormTypeOrderBySortOrderAsc(formType)
+                .stream()
+                .map(s -> new FormFieldSchemaResponse(
+                        s.getFieldName(),
+                        s.getFieldLabel(),
+                        s.getFieldType(),
+                        s.getIsRequired(),
+                        s.getSortOrder()
+                ))
+                .toList();
     }
 }

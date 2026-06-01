@@ -1,6 +1,7 @@
 package com.trackflow.module.form.service;
 
 import com.trackflow.module.form.dto.FormFieldResponse;
+import com.trackflow.module.form.dto.FormFieldSchemaResponse;
 import com.trackflow.module.form.dto.FormResponse;
 import com.trackflow.module.form.entity.FormType;
 import org.springframework.data.domain.Page;
@@ -18,4 +19,5 @@ public interface FormService {
     List<FormFieldResponse> getFormFields(UUID formId);
     FormResponse confirmForm(UUID id);
     FormResponse archiveForm(UUID id);
+    List<FormFieldSchemaResponse> getFormSchema(FormType formType);
 }

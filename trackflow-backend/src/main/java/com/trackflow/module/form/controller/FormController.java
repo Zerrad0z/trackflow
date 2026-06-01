@@ -1,6 +1,7 @@
 package com.trackflow.module.form.controller;
 
 import com.trackflow.module.form.dto.FormFieldResponse;
+import com.trackflow.module.form.dto.FormFieldSchemaResponse;
 import com.trackflow.module.form.dto.FormResponse;
 import com.trackflow.module.form.entity.FormType;
 import com.trackflow.module.form.service.FormService;
@@ -71,5 +72,11 @@ public class FormController {
     @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER')")
     public ResponseEntity<FormResponse> archiveForm(@PathVariable UUID id) {
         return ResponseEntity.ok(formService.archiveForm(id));
+    }
+
+    @GetMapping("/schemas/{formType}")
+    public ResponseEntity<List<FormFieldSchemaResponse>> getSchema(
+            @PathVariable FormType formType) {
+        return ResponseEntity.ok(formService.getFormSchema(formType));
     }
 }
