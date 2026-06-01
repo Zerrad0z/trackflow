@@ -5,6 +5,8 @@ import { formService } from '../../services/formService'
 import { CheckCircle, XCircle, Edit3, ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import api from '../../services/api'
+import toast from 'react-hot-toast'
+
 
 export default function FormDetailPage() {
   const { id } = useParams()
@@ -24,12 +26,14 @@ export default function FormDetailPage() {
   })
 
   const decideMutation = useMutation({
-    mutationFn: ({ suggestionId, decision, overrideValue }) =>
-      api.patch(`/suggestions/${suggestionId}/decide`, { decision, overrideValue }),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['validation', id])
-    }
-  })
+  mutationFn: ({ suggestionId, decision, overrideValue }) =>
+    api.patch(`/suggestions/${suggestionId}/decide`, { decision, overrideValue }),
+  onSuccess: (_, variables) => {
+    queryClient.invalidateQueries(['validation', id])
+    toast.success(`Suggestion ${variables.decision.toLowerCase()}`)
+  },
+  onError: () => toast.error('Failed to save decision')
+})
 
   const decisionColors = {
     PENDING: 'bg-yellow-100 text-yellow-700',

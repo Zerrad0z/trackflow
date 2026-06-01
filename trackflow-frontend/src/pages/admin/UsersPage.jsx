@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/common/Layout'
 import { userService } from '../../services/userService'
 import { UserPlus, X } from 'lucide-react'
+import toast from 'react-hot-toast'
+
 
 export default function UsersPage() {
   const [showCreate, setShowCreate] = useState(false)
@@ -16,14 +18,18 @@ export default function UsersPage() {
     queryFn: () => userService.getAllUsers().then(r => r.data)
   })
 
-  const createMutation = useMutation({
-    mutationFn: (data) => userService.createUser(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['users'])
-      setShowCreate(false)
-      setForm({ fullName: '', email: '', password: '', role: 'FIELD_SUPERVISOR' })
-    }
-  })
+ const createMutation = useMutation({
+  mutationFn: (data) => userService.createUser(data),
+  onSuccess: () => {
+    queryClient.invalidateQueries(['users'])
+    setShowCreate(false)
+    setForm({ fullName: '', email: '', password: '', role: 'FIELD_SUPERVISOR' })
+    toast.success('User created successfully!')
+  },
+  onError: (err) => {
+    toast.error(err.response?.data?.message || 'Failed to create user')
+  }
+})
 
   const roleColors = {
     ADMIN: 'bg-red-100 text-red-700',

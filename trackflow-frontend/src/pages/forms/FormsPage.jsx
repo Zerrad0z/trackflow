@@ -4,6 +4,8 @@ import Layout from '../../components/common/Layout'
 import { formService } from '../../services/formService'
 import { Upload, Eye, Archive, CheckCircle, Plus, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
+
 
 export default function FormsPage() {
   const [showUpload, setShowUpload] = useState(false)
@@ -20,14 +22,18 @@ export default function FormsPage() {
   })
 
   // Upload mutation
-  const uploadMutation = useMutation({
-    mutationFn: (formData) => formService.uploadForm(formData),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['forms'])
-      setShowUpload(false)
-      setFile(null)
-    }
-  })
+const uploadMutation = useMutation({
+  mutationFn: (formData) => formService.uploadForm(formData),
+  onSuccess: () => {
+    queryClient.invalidateQueries(['forms'])
+    setShowUpload(false)
+    setFile(null)
+    toast.success('Form uploaded! AI validation in progress...')
+  },
+  onError: (err) => {
+    toast.error(err.response?.data?.message || 'Upload failed')
+  }
+})
 
   const handleUpload = (e) => {
     e.preventDefault()
