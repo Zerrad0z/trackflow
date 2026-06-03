@@ -7,3 +7,11 @@
   --oncf-black: #1A1A1A;
   --oncf-gray: #F5F5F5;
 }
+
+button, [role="button"], a, select, input[type="file"] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}

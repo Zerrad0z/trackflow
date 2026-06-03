@@ -9,6 +9,7 @@ import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
 import com.trackflow.module.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
@@ -76,5 +78,15 @@ public class UserServiceImpl implements UserService {
         user.setIsActive(isActive);
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
+    }
+
+    @Transactional
+    @Override
+    public void resetPassword(UUID id, String newPassword) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Password reset for user: {}", user.getEmail());
     }
 }
