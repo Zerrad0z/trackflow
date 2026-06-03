@@ -1,5 +1,6 @@
 package com.trackflow.module.form.controller;
 
+import com.trackflow.module.form.dto.AddFieldRequest;
 import com.trackflow.module.form.dto.FormFieldResponse;
 import com.trackflow.module.form.dto.FormFieldSchemaResponse;
 import com.trackflow.module.form.dto.FormResponse;
@@ -78,5 +79,14 @@ public class FormController {
     public ResponseEntity<List<FormFieldSchemaResponse>> getSchema(
             @PathVariable FormType formType) {
         return ResponseEntity.ok(formService.getFormSchema(formType));
+    }
+
+    @PostMapping("/{id}/fields")
+    @PreAuthorize("hasRole('FIELD_SUPERVISOR')")
+    public ResponseEntity<FormFieldResponse> addField(
+            @PathVariable UUID id,
+            @RequestBody AddFieldRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(formService.addField(id, request));
     }
 }

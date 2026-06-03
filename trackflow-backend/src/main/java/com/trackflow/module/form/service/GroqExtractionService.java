@@ -64,8 +64,27 @@ public class GroqExtractionService {
     }
 
     private String buildExtractionPrompt(String rawText, String formType) {
+        Map<String, List<String>> schemaFields = Map.of(
+                "RAPPORT_M", List.of("date_reception", "date_envoi", "references",
+                        "detail", "categorie", "objet", "matricule", "nom_act",
+                        "antenne", "num_train", "date_train", "gamme", "section"),
+                "LETTRE_SOMMATION_BILLET", List.of("section", "nom_prenom", "antenne",
+                        "matricule", "num_dossier", "num_cine", "nom_act", "gare_arrivee",
+                        "gare_depart", "num_train", "date_voyage", "montant", "motif",
+                        "gamme", "statut", "num_pp", "montant_regle", "gare_reglement"),
+                "LETTRE_SOMMATION_CARTE", List.of("section", "nom_prenom", "num_dossier",
+                        "num_cine", "antenne", "matricule", "nom_act", "num_carte",
+                        "parcours_de", "parcours_a", "categorie_carte", "date_validite",
+                        "gamme", "num_train", "date_voyage", "montant",
+                        "nb_jours_expiration", "statut", "gare_reglement", "num_pp")
+        );
+
+        List<String> fields = schemaFields.getOrDefault(formType, List.of());
+
         return "Form type: " + formType + "\n\n" +
                 "Raw OCR text:\n" + rawText + "\n\n" +
-                "Extract all fields and return JSON array.";
+                "Extract ONLY these specific fields: " + fields + "\n" +
+                "Use EXACTLY these field names in your response.\n" +
+                "Return JSON array with fieldName and value only.";
     }
 }
