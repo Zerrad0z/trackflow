@@ -2,11 +2,7 @@ package com.trackflow.module.form.service;
 
 import com.trackflow.common.exception.InvalidOperationException;
 import com.trackflow.common.exception.ResourceNotFoundException;
-import com.trackflow.config.RabbitMQConfig;
-import com.trackflow.module.form.dto.FormFieldResponse;
-import com.trackflow.module.form.dto.FormFieldSchemaResponse;
-import com.trackflow.module.form.dto.FormMapper;
-import com.trackflow.module.form.dto.FormResponse;
+import com.trackflow.module.form.dto.*;
 import com.trackflow.module.form.entity.*;
 import com.trackflow.module.form.event.FormSubmittedEvent;
 import com.trackflow.module.form.repository.FormFieldRepository;
@@ -224,5 +220,23 @@ public class FormServiceImpl implements FormService {
                         s.getSortOrder()
                 ))
                 .toList();
+    }
+
+    @Transactional
+    @Override
+    public FormFieldResponse addField(UUID formId, AddFieldRequest request) {
+        Form form = formRepository.findById(formId)
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found: " + formId));
+
+        FormField field = FormField.builder()
+                .form(form)
+                .fieldName(request.fieldName())
+                .extractedValue(request.extractedValue())
+                .fieldStatus(FieldStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        FormField saved = formFieldRepository.save(field);
+        return formMapper.toFieldResponse(saved);
     }
 }

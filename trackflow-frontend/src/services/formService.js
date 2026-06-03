@@ -11,4 +11,5 @@ export const formService = {
   archiveForm: (id) => api.patch(`/forms/${id}/archive`),
   getLatestValidation: (id) => api.get(`/forms/${id}/validations/latest`),
   getValidationHistory: (id) => api.get(`/forms/${id}/validations`),
+  getFormSchema: (formType) => api.get(`/forms/schemas/${formType}`),
 }
