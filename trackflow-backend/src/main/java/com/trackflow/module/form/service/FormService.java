@@ -6,6 +6,7 @@ import com.trackflow.module.form.dto.FormFieldSchemaResponse;
 import com.trackflow.module.form.dto.FormResponse;
 import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.entity.FormType;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,4 +33,6 @@ public interface FormService {
 
     @Transactional
     FormFieldResponse addField(UUID formId, AddFieldRequest request);
+    Resource exportFormsToExcel(FormType formType, FormStatus formStatus,
+                                LocalDateTime from, LocalDateTime to, String actName);
 }

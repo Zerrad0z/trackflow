@@ -8,12 +8,15 @@ import com.trackflow.module.form.event.FormSubmittedEvent;
 import com.trackflow.module.form.repository.FormFieldRepository;
 import com.trackflow.module.form.repository.FormFieldSchemaRepository;
 import com.trackflow.module.form.repository.FormRepository;
+import com.trackflow.module.report.service.ExcelReportService;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,7 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -40,6 +46,7 @@ public class FormServiceImpl implements FormService {
     private final OcrService ocrService;
     private final GroqExtractionService groqExtractionService;
     private final FormFieldSchemaRepository formFieldSchemaRepository;
+    private final ExcelReportService excelReportService;
 
     @Override
     @Transactional
@@ -252,5 +259,29 @@ public class FormServiceImpl implements FormService {
                         formStatus != null ? formStatus.name() : null,
                         from, to, uploadedById, actName, pageable)
                 .map(formMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Resource exportFormsToExcel(FormType formType, FormStatus formStatus,
+                                       LocalDateTime from, LocalDateTime to, String actName) {
+
+        List<Form> forms = formRepository.findWithFilters(
+                formType != null ? formType.name() : null,
+                formStatus != null ? formStatus.name() : null,
+                from, to, null, actName,
+                Pageable.unpaged()).getContent();
+
+        // Fetch fields for each form
+        Map<UUID, List<FormField>> fieldsByForm = new HashMap<>();
+        for (Form form : forms) {
+            fieldsByForm.put(form.getId(), formFieldRepository.findByForm(form));
+        }
+
+        String filePath = excelReportService.generateDetailedFormReport(
+                forms, fieldsByForm,
+                "Forms Export — " + LocalDate.now());
+
+        return new FileSystemResource(Paths.get(filePath));
     }
 }

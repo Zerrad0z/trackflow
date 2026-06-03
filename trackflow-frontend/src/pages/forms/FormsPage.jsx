@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/common/Layout'
 import { formService } from '../../services/formService'
-import { Upload, Eye, Plus, X, Search, Filter, ChevronDown } from 'lucide-react'
+import { Upload, Eye, Plus, X, Search, Filter, ChevronDown, Download } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -27,6 +27,25 @@ export default function FormsPage() {
   const activeFilters = Object.fromEntries(
     Object.entries(filters).filter(([_, v]) => v !== '')
   )
+
+  const handleExport = async () => {
+  try {
+    toast.loading('Generating export...')
+    const response = await formService.exportForms(activeFilters)
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `forms_export_${new Date().toISOString().split('T')[0]}.xlsx`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    toast.dismiss()
+    toast.success('Export downloaded!')
+  } catch (err) {
+    toast.dismiss()
+    toast.error('Export failed')
+  }
+}
 
   const { data, isLoading } = useQuery({
     queryKey: ['forms', activeFilters],
@@ -93,6 +112,18 @@ export default function FormsPage() {
             Upload Form
           </button>
         )}
+
+        {user?.role !== 'FIELD_SUPERVISOR' && (
+  <button
+    onClick={handleExport}
+    className="flex items-center gap-2 text-white px-4 py-2
+               rounded-lg text-sm font-medium transition"
+    style={{ backgroundColor: '#1A1A1A' }}
+  >
+    <Download size={16} />
+    Export Excel
+  </button>
+)}
       </div>
 
       {/* Filter bar — managers only */}

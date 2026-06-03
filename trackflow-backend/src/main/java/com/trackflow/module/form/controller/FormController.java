@@ -10,8 +10,10 @@ import com.trackflow.module.form.service.FormService;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -106,5 +108,30 @@ public class FormController {
             @RequestBody AddFieldRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(formService.addField(id, request));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<Resource> exportForms(
+            @RequestParam(required = false) FormType formType,
+            @RequestParam(required = false) FormStatus formStatus,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String actName) {
+
+        LocalDateTime fromDate = from != null ?
+                LocalDate.parse(from).atStartOfDay() : null;
+        LocalDateTime toDate = to != null ?
+                LocalDate.parse(to).atTime(23, 59, 59) : null;
+
+        Resource file = formService.exportFormsToExcel(
+                formType, formStatus, fromDate, toDate, actName);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"forms_export.xlsx\"")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 }
