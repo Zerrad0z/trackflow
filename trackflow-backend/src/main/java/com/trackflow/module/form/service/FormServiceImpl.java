@@ -239,4 +239,18 @@ public class FormServiceImpl implements FormService {
         FormField saved = formFieldRepository.save(field);
         return formMapper.toFieldResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<FormResponse> getFormsWithFilters(
+            FormType formType, FormStatus formStatus,
+            LocalDateTime from, LocalDateTime to,
+            UUID uploadedById, String actName,
+            Pageable pageable) {
+        return formRepository.findWithFilters(
+                        formType != null ? formType.name() : null,
+                        formStatus != null ? formStatus.name() : null,
+                        from, to, uploadedById, actName, pageable)
+                .map(formMapper::toResponse);
+    }
 }

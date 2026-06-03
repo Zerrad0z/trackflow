@@ -4,6 +4,7 @@ import com.trackflow.module.form.dto.AddFieldRequest;
 import com.trackflow.module.form.dto.FormFieldResponse;
 import com.trackflow.module.form.dto.FormFieldSchemaResponse;
 import com.trackflow.module.form.dto.FormResponse;
+import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.entity.FormType;
 import com.trackflow.module.form.service.FormService;
 import com.trackflow.module.user.entity.User;
@@ -20,6 +21,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,14 +44,29 @@ public class FormController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<Page<FormResponse>> getForms(Pageable pageable) {
+    public ResponseEntity<Page<FormResponse>> getForms(
+            @RequestParam(required = false) FormType formType,
+            @RequestParam(required = false) FormStatus formStatus,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) UUID uploadedById,
+            @RequestParam(required = false) String actName,
+            Pageable pageable) {
+
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         User user = (User) auth.getPrincipal();
 
         if (user.getRole() == UserRole.FIELD_SUPERVISOR) {
             return ResponseEntity.ok(formService.getMyForms(pageable));
         }
-        return ResponseEntity.ok(formService.getAllForms(pageable));
+
+        LocalDateTime fromDate = from != null ?
+                LocalDate.parse(from).atStartOfDay() : null;
+        LocalDateTime toDate = to != null ?
+                LocalDate.parse(to).atTime(23, 59, 59) : null;
+
+        return ResponseEntity.ok(formService.getFormsWithFilters(
+                formType, formStatus, fromDate, toDate, uploadedById, actName, pageable));
     }
 
     @GetMapping("/{id}")
