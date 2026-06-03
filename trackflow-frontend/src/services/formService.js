@@ -13,4 +13,8 @@ export const formService = {
   getValidationHistory: (id) => api.get(`/forms/${id}/validations`),
   getFormSchema: (formType) => api.get(`/forms/schemas/${formType}`),
   getForms: (params) => api.get('/forms', { params }),
+  exportForms: (params) => api.get('/forms/export', {
+  params,
+  responseType: 'blob'
+}),
 }
