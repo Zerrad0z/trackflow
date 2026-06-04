@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/common/Layout'
 import { userService } from '../../services/userService'
+import ConfirmDialog from '../../components/common/ConfirmDialog'
 import {
   UserPlus, X, MoreVertical, Shield, Power, Key,
   Search, Filter, Users, UserCheck, UserX, Mail,
@@ -32,6 +33,7 @@ const roleIcons = {
 
 export default function UsersPage() {
   const [showCreate, setShowCreate] = useState(false)
+  const [showStatusConfirm, setShowStatusConfirm] = useState(null)
   const [showActions, setShowActions] = useState(null)
   const [actionsPosition, setActionsPosition] = useState(null)
   const [showRoleModal, setShowRoleModal] = useState(null)
@@ -311,11 +313,21 @@ export default function UsersPage() {
               <table className="w-full min-w-[860px]">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/80">
-                    {['User', 'Email', 'Role', 'Status', 'Actions'].map(h => (
-                      <th key={h} className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
-                        {h}
-                      </th>
-                    ))}
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      User
+                    </th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      Email
+                    </th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      Role
+                    </th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      Status
+                    </th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -360,7 +372,7 @@ export default function UsersPage() {
                         >
                           <MoreVertical size={17} />
                         </button>
-                      </td>
+                       </td>
                     </tr>
                   ))}
                 </tbody>
@@ -456,6 +468,24 @@ export default function UsersPage() {
         </UserModal>
       )}
 
+      <ConfirmDialog
+        isOpen={!!showStatusConfirm}
+        title={showStatusConfirm?.isActive ? 'Deactivate User' : 'Activate User'}
+        message={showStatusConfirm?.isActive
+          ? `Are you sure you want to deactivate ${showStatusConfirm?.fullName}? They will no longer be able to login.`
+          : `Activate ${showStatusConfirm?.fullName}'s account?`}
+        confirmLabel={showStatusConfirm?.isActive ? 'Deactivate' : 'Activate'}
+        danger={showStatusConfirm?.isActive}
+        onConfirm={() => {
+          statusMutation.mutate({
+            id: showStatusConfirm.id,
+            isActive: !showStatusConfirm.isActive
+          })
+          setShowStatusConfirm(null)
+        }}
+        onCancel={() => setShowStatusConfirm(null)}
+      />
+
       {showActions && actionsPosition && (() => {
         const user = users.find(u => u.id === showActions)
         if (!user) return null
@@ -476,7 +506,7 @@ export default function UsersPage() {
             <ActionButton
               icon={Power}
               onClick={() => {
-                statusMutation.mutate({ id: user.id, isActive: !user.isActive })
+                setShowStatusConfirm(user)
                 closeActions()
               }}
             >
