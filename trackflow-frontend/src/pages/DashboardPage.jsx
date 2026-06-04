@@ -5,12 +5,14 @@ import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboardService'
 import {
   FileText, CheckCircle, Clock, Archive,
-  Users, AlertCircle, TrendingUp, ArrowRight
+   AlertCircle, TrendingUp, ArrowRight, Upload
 } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+
+  const today = new Date().toISOString().split('T')[0]
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
@@ -28,12 +30,20 @@ export default function DashboardPage() {
       path: '/forms'
     },
     {
+      label: 'Uploaded Today',
+      value: stats?.uploadedToday || 0,
+      icon: <Upload size={20} />,
+      color: '#E8500A',
+      bg: '#FFF3ED',
+      path: `/forms?from=${today}&to=${today}`
+    },
+    {
       label: 'Pending Validation',
       value: stats?.pendingValidation || 0,
       icon: <Clock size={20} />,
       color: '#F59E0B',
       bg: '#FFFBEB',
-      path: '/forms'
+      path: '/forms?formStatus=PENDING_VALIDATION'
     },
     {
       label: 'Pending Confirmation',
@@ -41,7 +51,7 @@ export default function DashboardPage() {
       icon: <AlertCircle size={20} />,
       color: '#8B5CF6',
       bg: '#F5F3FF',
-      path: '/forms'
+      path: '/forms?formStatus=PENDING_CONFIRMATION'
     },
     {
       label: 'Confirmed This Month',
@@ -49,7 +59,7 @@ export default function DashboardPage() {
       icon: <CheckCircle size={20} />,
       color: '#10B981',
       bg: '#ECFDF5',
-      path: '/forms'
+      path: '/forms?formStatus=CONFIRMED'
     },
     {
       label: 'Archived Forms',
@@ -57,15 +67,7 @@ export default function DashboardPage() {
       icon: <Archive size={20} />,
       color: '#6B7280',
       bg: '#F9FAFB',
-      path: '/forms'
-    },
-    {
-      label: 'Active Users',
-      value: stats?.activeUsers || 0,
-      icon: <Users size={20} />,
-      color: '#3B82F6',
-      bg: '#EFF6FF',
-      path: '/users'
+      path: '/forms?formStatus=ARCHIVED'
     },
   ]
 
@@ -87,7 +89,6 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-      {/* Welcome header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">
           Welcome back, {user?.fullName?.split(' ')[0]} 👋
@@ -98,8 +99,8 @@ export default function DashboardPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(7)].map((_, i) => (
             <div key={i} className="bg-white rounded-xl p-6 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-24 mb-3" />
               <div className="h-8 bg-gray-200 rounded w-16" />
@@ -109,21 +110,22 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* Stat cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {statCards.map(card => (
               <div
                 key={card.label}
                 onClick={() => navigate(card.path)}
                 className="bg-white rounded-xl p-5 border shadow-sm
                            cursor-pointer hover:shadow-md transition-all
-                           hover:-translate-y-0.5"
+                           hover:-translate-y-0.5 group"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center"
                        style={{ backgroundColor: card.bg, color: card.color }}>
                     {card.icon}
                   </div>
-                  <ArrowRight size={14} className="text-gray-300" />
+                  <ArrowRight size={14} className="text-gray-300
+                               group-hover:text-orange-400 transition-colors" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">{card.value}</p>
                 <p className="text-sm text-gray-500 mt-0.5">{card.label}</p>
@@ -134,7 +136,7 @@ export default function DashboardPage() {
           {/* Charts row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            {/* Forms by type */}
+            {/* Forms by type — clickable bars */}
             <div className="bg-white rounded-xl p-5 border shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp size={16} style={{ color: '#E8500A' }} />
@@ -142,16 +144,26 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-3">
                 {Object.entries(stats?.formsByType || {}).map(([type, count]) => (
-                  <div key={type}>
+                  <div
+                    key={type}
+                    onClick={() => navigate(`/forms?formType=${type}`)}
+                    className="cursor-pointer group"
+                  >
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">
+                      <span className="text-gray-600 group-hover:text-gray-900
+                                       transition-colors">
                         {type.replace(/_/g, ' ')}
                       </span>
-                      <span className="font-medium text-gray-900">{count}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">{count}</span>
+                        <ArrowRight size={12} className="text-gray-300
+                                     group-hover:text-orange-400 transition-colors" />
+                      </div>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-500"
+                        className="h-full rounded-full transition-all duration-500
+                                   group-hover:opacity-80"
                         style={{
                           width: `${(count / totalForms) * 100}%`,
                           backgroundColor: formTypeColors[type] || '#E8500A'
@@ -163,7 +175,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Forms by status */}
+            {/* Forms by status — clickable bars */}
             <div className="bg-white rounded-xl p-5 border shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <FileText size={16} style={{ color: '#E8500A' }} />
@@ -171,16 +183,26 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-3">
                 {Object.entries(stats?.formsByStatus || {}).map(([status, count]) => (
-                  <div key={status}>
+                  <div
+                    key={status}
+                    onClick={() => navigate(`/forms?formStatus=${status}`)}
+                    className="cursor-pointer group"
+                  >
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">
+                      <span className="text-gray-600 group-hover:text-gray-900
+                                       transition-colors">
                         {status.replace(/_/g, ' ')}
                       </span>
-                      <span className="font-medium text-gray-900">{count}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">{count}</span>
+                        <ArrowRight size={12} className="text-gray-300
+                                     group-hover:text-orange-400 transition-colors" />
+                      </div>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-500"
+                        className="h-full rounded-full transition-all duration-500
+                                   group-hover:opacity-80"
                         style={{
                           width: `${(count / totalForms) * 100}%`,
                           backgroundColor: statusColors[status] || '#E8500A'
@@ -192,26 +214,42 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* This week summary */}
+            {/* Confirmation summary — clickable */}
             <div className="bg-white rounded-xl p-5 border shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <CheckCircle size={16} style={{ color: '#E8500A' }} />
-                <h3 className="font-semibold text-gray-800">Confirmation Summary</h3>
+                <h3 className="font-semibold text-gray-800">
+                  Confirmation Summary
+                </h3>
               </div>
               <div className="space-y-3">
                 {[
-                  { label: 'Confirmed Today', value: stats?.confirmedToday },
-                  { label: 'Confirmed This Week', value: stats?.confirmedThisWeek },
-                  { label: 'Confirmed This Month', value: stats?.confirmedThisMonth },
+                  { label: 'Confirmed Today',
+                    value: stats?.confirmedToday,
+                    path: `/forms?formStatus=CONFIRMED&from=${today}&to=${today}` },
+                  { label: 'Confirmed This Week',
+                    value: stats?.confirmedThisWeek,
+                    path: '/forms?formStatus=CONFIRMED' },
+                  { label: 'Confirmed This Month',
+                    value: stats?.confirmedThisMonth,
+                    path: '/forms?formStatus=CONFIRMED' },
                 ].map(item => (
-                  <div key={item.label}
-                       className="flex items-center justify-between p-3
-                                  bg-gray-50 rounded-lg">
+                  <div
+                    key={item.label}
+                    onClick={() => navigate(item.path)}
+                    className="flex items-center justify-between p-3 bg-gray-50
+                               rounded-lg cursor-pointer hover:bg-orange-50
+                               transition group"
+                  >
                     <span className="text-sm text-gray-600">{item.label}</span>
-                    <span className="font-bold text-lg"
-                          style={{ color: '#E8500A' }}>
-                      {item.value}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-lg"
+                            style={{ color: '#E8500A' }}>
+                        {item.value}
+                      </span>
+                      <ArrowRight size={12} className="text-gray-300
+                                   group-hover:text-orange-400 transition-colors" />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -225,22 +263,25 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-2">
                 {[
-                  { label: 'View all forms', path: '/forms',
-                    desc: `${stats?.totalForms} total` },
-                  { label: 'Pending validation',
-                    path: '/forms',
+                  { label: 'Uploaded Today',
+                    path: `/forms?from=${today}&to=${today}`,
+                    desc: `${stats?.uploadedToday || 0} forms today` },
+                  { label: 'Pending Validation',
+                    path: '/forms?formStatus=PENDING_VALIDATION',
                     desc: `${stats?.pendingValidation} forms waiting` },
-                  { label: 'Generate report', path: '/reports',
+                  { label: 'Pending Confirmation',
+                    path: '/forms?formStatus=PENDING_CONFIRMATION',
+                    desc: `${stats?.pendingConfirmation} forms waiting` },
+                  { label: 'Generate Report',
+                    path: '/reports',
                     desc: 'PDF or Excel' },
-                  { label: 'Notifications', path: '/notifications',
-                    desc: 'Check updates' },
                 ].map(action => (
                   <button
                     key={action.label}
                     onClick={() => navigate(action.path)}
                     className="w-full flex items-center justify-between p-3
                                rounded-lg border hover:border-orange-300
-                               hover:bg-orange-50 transition text-left"
+                               hover:bg-orange-50 transition text-left group"
                   >
                     <div>
                       <p className="text-sm font-medium text-gray-800">
@@ -248,7 +289,8 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-xs text-gray-400">{action.desc}</p>
                     </div>
-                    <ArrowRight size={14} className="text-gray-400" />
+                    <ArrowRight size={14} className="text-gray-400
+                                 group-hover:text-orange-400 transition-colors" />
                   </button>
                 ))}
               </div>

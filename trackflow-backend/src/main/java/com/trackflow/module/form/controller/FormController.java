@@ -58,14 +58,15 @@ public class FormController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         User user = (User) auth.getPrincipal();
 
-        if (user.getRole() == UserRole.FIELD_SUPERVISOR) {
-            return ResponseEntity.ok(formService.getMyForms(pageable));
-        }
-
         LocalDateTime fromDate = from != null ?
                 LocalDate.parse(from).atStartOfDay() : null;
         LocalDateTime toDate = to != null ?
                 LocalDate.parse(to).atTime(23, 59, 59) : null;
+
+        if (user.getRole() == UserRole.FIELD_SUPERVISOR) {
+            return ResponseEntity.ok(formService.getFormsWithFilters(
+                    formType, formStatus, fromDate, toDate, user.getId(), actName, pageable));
+        }
 
         return ResponseEntity.ok(formService.getFormsWithFilters(
                 formType, formStatus, fromDate, toDate, uploadedById, actName, pageable));

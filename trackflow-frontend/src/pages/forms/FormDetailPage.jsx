@@ -9,11 +9,13 @@ import {
 import { useState } from 'react'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
+import { useAuth } from '../../context/AuthContext'
 
 export default function FormDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [overrideValues, setOverrideValues] = useState({})
   const [showAddField, setShowAddField] = useState(false)
   const [newField, setNewField] = useState({ fieldName: '', extractedValue: '' })
@@ -37,7 +39,8 @@ export default function FormDetailPage() {
 
   const { data: validation, isLoading: validationLoading } = useQuery({
     queryKey: ['validation', id],
-    queryFn: () => formService.getLatestValidation(id).then(r => r.data),
+    queryFn: () => formService.getLatestValidation(id).then(r => r.data || null),
+    enabled: activeTab === 'validation',
     retry: false
   })
 
@@ -158,18 +161,32 @@ export default function FormDetailPage() {
           </div>
         </div>
       )}
-      {form?.formStatus === 'PENDING_CONFIRMATION' && (
-  <button
-    onClick={() => confirmMutation.mutate()}
-    disabled={confirmMutation.isPending}
-    className="flex items-center gap-2 text-white px-4 py-2 
-               rounded-lg text-sm font-medium disabled:opacity-50"
-    style={{ backgroundColor: '#E8500A' }}
-  >
-    <CheckCircle size={16} />
-    {confirmMutation.isPending ? 'Confirming...' : 'Confirm Form'}
-  </button>
-)}
+      {user?.role === 'FIELD_SUPERVISOR' && form && (
+        <div className="mb-6">
+          {form.formStatus === 'PENDING_CONFIRMATION' ? (
+            <button
+              onClick={() => confirmMutation.mutate()}
+              disabled={confirmMutation.isPending}
+              className="flex items-center gap-2 text-white px-4 py-2
+                         rounded-lg text-sm font-medium disabled:opacity-50"
+              style={{ backgroundColor: '#E8500A' }}
+            >
+              <CheckCircle size={16} />
+              {confirmMutation.isPending ? 'Confirming...' : 'Confirm Form'}
+            </button>
+          ) : form.formStatus === 'CONFIRMED' ? (
+            <div className="inline-flex items-center gap-2 rounded-lg bg-green-50 px-4 py-2 text-sm font-medium text-green-700">
+              <CheckCircle size={16} />
+              Form already confirmed
+            </div>
+          ) : form.formStatus !== 'ARCHIVED' && (
+            <div className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-500">
+              <CheckCircle size={16} />
+              Confirm available after AI validation
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-white rounded-lg p-1 shadow-sm

@@ -16,8 +16,12 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      await login({ email, password })
-      navigate('/dashboard')
+      const user = await login({ email, password })
+if (user.role === 'ADMIN') {
+  navigate('/users')
+} else {
+  navigate('/dashboard')
+}
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid credentials')
     } finally {
@@ -81,6 +85,8 @@ export default function LoginPage() {
                   <Mail size={16} className="absolute left-3 top-3 text-gray-400" />
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg pl-10

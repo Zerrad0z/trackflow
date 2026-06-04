@@ -2,6 +2,8 @@ package com.trackflow.module.notification.consumer;
 
 import com.trackflow.config.RabbitMQConfig;
 import com.trackflow.module.notification.service.NotificationService;
+import com.trackflow.module.user.entity.User;
+import com.trackflow.module.user.entity.UserRole;
 import com.trackflow.module.user.repository.UserRepository;
 import com.trackflow.module.validation.dto.ValidationCompleteEvent;
 import lombok.RequiredArgsConstructor;
@@ -19,15 +21,25 @@ public class NotificationConsumer {
 
     @RabbitListener(queues = RabbitMQConfig.VALIDATION_COMPLETE_QUEUE)
     public void handleValidationComplete(ValidationCompleteEvent event) {
-        log.info("Received validation.complete event for form: {}", event.formId());
+        log.info("Received validation.complete for form: {}", event.formId());
 
+        // Notify uploader
         userRepository.findById(event.uploadedById()).ifPresent(user -> {
             String message = String.format(
                     "Your form %s has been validated. %d suggestion(s) found.",
-                    event.formType(),
-                    event.suggestionCount()
-            );
+                    event.formType(), event.suggestionCount());
             notificationService.sendNotification(user, message);
+        });
+
+        // Notify all managers
+        userRepository.findByRole(UserRole.MANAGER).forEach(manager -> {
+            String message = String.format(
+                    "Form %s uploaded by %s has been validated. %d suggestion(s) found.",
+                    event.formType(),
+                    userRepository.findById(event.uploadedById())
+                            .map(User::getFullName).orElse("Unknown"),
+                    event.suggestionCount());
+            notificationService.sendNotification(manager, message);
         });
     }
 }

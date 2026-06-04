@@ -11,6 +11,11 @@ import com.trackflow.module.form.repository.FormRepository;
 import com.trackflow.module.report.service.ExcelReportService;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
+import com.trackflow.module.user.repository.UserRepository;
+import com.trackflow.module.validation.entity.AiValidation;
+import com.trackflow.module.validation.entity.ValidationStatus;
+import com.trackflow.module.validation.repository.AiValidationRepository;
+import com.trackflow.module.validation.repository.FieldSuggestionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -47,6 +52,9 @@ public class FormServiceImpl implements FormService {
     private final GroqExtractionService groqExtractionService;
     private final FormFieldSchemaRepository formFieldSchemaRepository;
     private final ExcelReportService excelReportService;
+    private final AiValidationRepository aiValidationRepository;
+    private final FieldSuggestionRepository fieldSuggestionRepository;
+    private final ExcelReportService excelExportService;
 
     @Override
     @Transactional
@@ -174,7 +182,14 @@ public class FormServiceImpl implements FormService {
         Form form = formRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Form not found: " + id));
 
-        if (form.getFormStatus() != FormStatus.PENDING_CONFIRMATION) {
+        AiValidation latestValidation = aiValidationRepository.findByFormAndIsLatestTrue(form)
+                .orElse(null);
+        boolean hasCompletedValidationWithoutSuggestions = latestValidation != null
+                && latestValidation.getStatus() == ValidationStatus.COMPLETED
+                && fieldSuggestionRepository.findByAiValidation(latestValidation).isEmpty();
+
+        if (form.getFormStatus() != FormStatus.PENDING_CONFIRMATION
+                && !hasCompletedValidationWithoutSuggestions) {
             throw new InvalidOperationException(
                     "Form cannot be confirmed in status: " + form.getFormStatus());
         }
@@ -266,22 +281,31 @@ public class FormServiceImpl implements FormService {
     public Resource exportFormsToExcel(FormType formType, FormStatus formStatus,
                                        LocalDateTime from, LocalDateTime to, String actName) {
 
+        User currentUser = getCurrentUser();
+        boolean isSupervisor = currentUser.getRole() == UserRole.FIELD_SUPERVISOR;
+
         List<Form> forms = formRepository.findWithFilters(
                 formType != null ? formType.name() : null,
                 formStatus != null ? formStatus.name() : null,
-                from, to, null, actName,
+                from, to,
+                isSupervisor ? currentUser.getId() : null,
+                actName,
                 Pageable.unpaged()).getContent();
 
-        // Fetch fields for each form
         Map<UUID, List<FormField>> fieldsByForm = new HashMap<>();
         for (Form form : forms) {
             fieldsByForm.put(form.getId(), formFieldRepository.findByForm(form));
         }
 
-        String filePath = excelReportService.generateDetailedFormReport(
+        String filePath = excelExportService.generateDetailedFormReport(
                 forms, fieldsByForm,
                 "Forms Export — " + LocalDate.now());
 
         return new FileSystemResource(Paths.get(filePath));
+    }
+
+    private User getCurrentUser() {
+        return (User) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
     }
 }
