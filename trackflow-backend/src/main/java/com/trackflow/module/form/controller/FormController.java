@@ -1,9 +1,6 @@
 package com.trackflow.module.form.controller;
 
-import com.trackflow.module.form.dto.AddFieldRequest;
-import com.trackflow.module.form.dto.FormFieldResponse;
-import com.trackflow.module.form.dto.FormFieldSchemaResponse;
-import com.trackflow.module.form.dto.FormResponse;
+import com.trackflow.module.form.dto.*;
 import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.entity.FormType;
 import com.trackflow.module.form.service.FormService;
@@ -134,5 +131,23 @@ public class FormController {
                 .contentType(MediaType.parseMediaType(
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
+    }
+
+    @PatchMapping("/{id}/infraction-status")
+    @PreAuthorize("hasRole('FIELD_SUPERVISOR')")
+    public ResponseEntity<Void> updateInfractionStatus(
+            @PathVariable UUID id,
+            @RequestBody InfractionStatusRequest request) {
+        formService.updateInfractionStatus(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/fields/bulk")
+    @PreAuthorize("hasRole('FIELD_SUPERVISOR')")
+    public ResponseEntity<Void> updateFields(
+            @PathVariable UUID id,
+            @RequestBody List<FieldUpdateRequest> updates) {
+        formService.updateFields(id, updates);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -36,4 +36,7 @@ public class User {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @Column(name = "first_login_done", nullable = false)
+    private Boolean firstLoginDone = false;
 }

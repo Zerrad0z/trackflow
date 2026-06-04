@@ -11,7 +11,6 @@ import com.trackflow.module.form.repository.FormRepository;
 import com.trackflow.module.report.service.ExcelReportService;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
-import com.trackflow.module.user.repository.UserRepository;
 import com.trackflow.module.validation.entity.AiValidation;
 import com.trackflow.module.validation.entity.ValidationStatus;
 import com.trackflow.module.validation.repository.AiValidationRepository;
@@ -302,6 +301,78 @@ public class FormServiceImpl implements FormService {
                 "Forms Export — " + LocalDate.now());
 
         return new FileSystemResource(Paths.get(filePath));
+    }
+
+    @Transactional
+    @Override
+    public void updateInfractionStatus(UUID formId, InfractionStatusRequest request) {
+        Form form = formRepository.findById(formId)
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found: " + formId));
+
+        List<FormField> fields = formFieldRepository.findByForm(form);
+
+        // Helper to update or create a field
+        updateOrCreateField(form, fields, "statut", request.statut());
+
+        if ("REGULARISEE".equalsIgnoreCase(request.statut())) {
+            if (request.gareReglement() != null)
+                updateOrCreateField(form, fields, "gare_reglement", request.gareReglement());
+            if (request.numPP() != null)
+                updateOrCreateField(form, fields, "num_pp", request.numPP());
+            // montant only for BILLET
+            if (request.montantRegle() != null
+                    && form.getFormType() == FormType.LETTRE_SOMMATION_BILLET)
+                updateOrCreateField(form, fields, "montant_regle",
+                        String.valueOf(request.montantRegle()));
+        }
+    }
+
+    private void updateOrCreateField(Form form, List<FormField> fields,
+                                     String fieldName, String value) {
+        FormField field = fields.stream()
+                .filter(f -> f.getFieldName().equals(fieldName))
+                .findFirst()
+                .orElse(FormField.builder()
+                        .form(form)
+                        .fieldName(fieldName)
+                        .fieldStatus(FieldStatus.PENDING)
+                        .createdAt(LocalDateTime.now())
+                        .build());
+        field.setExtractedValue(value);
+        field.setConfirmedValue(value);
+        field.setFieldStatus(FieldStatus.ACCEPTED);
+        formFieldRepository.save(field);
+    }
+
+    @Transactional
+    @Override
+    public void updateFields(UUID formId, List<FieldUpdateRequest> updates) {
+        Form form = formRepository.findById(formId)
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found"));
+
+        if (form.getFormStatus() == FormStatus.ARCHIVED) {
+            throw new InvalidOperationException("Cannot edit archived form");
+        }
+
+        List<FormField> existingFields = formFieldRepository.findByForm(form);
+
+        for (FieldUpdateRequest update : updates) {
+            FormField field = existingFields.stream()
+                    .filter(f -> f.getFieldName().equals(update.fieldName()))
+                    .findFirst()
+                    .orElse(FormField.builder()
+                            .form(form)
+                            .fieldName(update.fieldName())
+                            .fieldStatus(FieldStatus.PENDING)
+                            .createdAt(LocalDateTime.now())
+                            .build());
+
+            field.setExtractedValue(update.value());
+            field.setConfirmedValue(update.value());
+            formFieldRepository.save(field);
+        }
+
+        log.info("Updated {} fields for form {}", updates.size(), formId);
     }
 
     private User getCurrentUser() {
