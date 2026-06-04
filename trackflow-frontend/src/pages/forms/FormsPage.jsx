@@ -2,31 +2,52 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/common/Layout'
 import { formService } from '../../services/formService'
-import { Upload, Eye, Plus, X, Search, Filter, ChevronDown, Download } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import {
+  Upload, Eye, Plus, X, Search, Filter, ChevronDown,
+  Download, ChevronLeft, ChevronRight
+} from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+
+const PAGE_SIZE = 10
 
 export default function FormsPage() {
   const [showUpload, setShowUpload] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [file, setFile] = useState(null)
   const [formType, setFormType] = useState('RAPPORT_M')
-  const [filters, setFilters] = useState({
-    formType: '',
-    formStatus: '',
-    from: '',
-    to: '',
-    actName: ''
-  })
+  const [page, setPage] = useState(0)
+const [searchParams] = useSearchParams()
+
+const [filters, setFilters] = useState({
+  formType: searchParams.get('formType') || '',
+  formStatus: searchParams.get('formStatus') || '',
+  from: searchParams.get('from') || '',
+  to: searchParams.get('to') || '',
+  actName: ''
+})
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { user } = useAuth()
 
   // Build active filters for query
   const activeFilters = Object.fromEntries(
-    Object.entries(filters).filter(([_, v]) => v !== '')
+    Object.entries(filters).filter(([key, value]) =>
+      value !== '' && (user?.role !== 'FIELD_SUPERVISOR' || key !== 'actName')
+    )
   )
+
+  const queryParams = {
+    ...activeFilters,
+    page,
+    size: PAGE_SIZE
+  }
+
+  const updateFilter = (key, value) => {
+    setPage(0)
+    setFilters(current => ({ ...current, [key]: value }))
+  }
 
   const handleExport = async () => {
   try {
@@ -41,21 +62,22 @@ export default function FormsPage() {
     link.remove()
     toast.dismiss()
     toast.success('Export downloaded!')
-  } catch (err) {
+  } catch {
     toast.dismiss()
     toast.error('Export failed')
   }
 }
 
   const { data, isLoading } = useQuery({
-    queryKey: ['forms', activeFilters],
-    queryFn: () => formService.getForms(activeFilters).then(r => r.data)
+    queryKey: ['forms', queryParams],
+    queryFn: () => formService.getForms(queryParams).then(r => r.data)
   })
 
   const uploadMutation = useMutation({
     mutationFn: (formData) => formService.uploadForm(formData),
     onSuccess: () => {
-      queryClient.invalidateQueries(['forms'])
+      queryClient.invalidateQueries({ queryKey: ['forms'] })
+      setPage(0)
       setShowUpload(false)
       setFile(null)
       toast.success('Form uploaded! AI validation in progress...')
@@ -75,10 +97,13 @@ export default function FormsPage() {
   }
 
   const clearFilters = () => {
+    setPage(0)
     setFilters({ formType: '', formStatus: '', from: '', to: '', actName: '' })
   }
 
-  const activeFilterCount = Object.values(filters).filter(v => v !== '').length
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) =>
+    value !== '' && (user?.role !== 'FIELD_SUPERVISOR' || key !== 'actName')
+  ).length
 
   const statusColors = {
     UPLOADED: 'bg-blue-100 text-blue-700',
@@ -90,6 +115,10 @@ export default function FormsPage() {
   }
 
   const forms = data?.content || []
+  const totalPages = data?.totalPages || 0
+  const totalElements = data?.totalElements || 0
+  const firstItem = totalElements === 0 ? 0 : page * PAGE_SIZE + 1
+  const lastItem = Math.min((page + 1) * PAGE_SIZE, totalElements)
 
   return (
     <Layout>
@@ -98,7 +127,7 @@ export default function FormsPage() {
         <div>
           <h2 className="text-xl font-semibold text-gray-800">Forms</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            {data?.totalElements || 0} total forms
+            {totalElements} total forms
           </p>
         </div>
         {user?.role === 'FIELD_SUPERVISOR' && (
@@ -126,8 +155,7 @@ export default function FormsPage() {
 )}
       </div>
 
-      {/* Filter bar — managers only */}
-      {user?.role !== 'FIELD_SUPERVISOR' && (
+      {/* Filter bar */}
         <div className="bg-white rounded-xl border shadow-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <button
@@ -159,7 +187,7 @@ export default function FormsPage() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <select
                 value={filters.formType}
-                onChange={(e) => setFilters({...filters, formType: e.target.value})}
+                onChange={(e) => updateFilter('formType', e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm
                            focus:outline-none focus:ring-1"
               >
@@ -171,7 +199,7 @@ export default function FormsPage() {
 
               <select
                 value={filters.formStatus}
-                onChange={(e) => setFilters({...filters, formStatus: e.target.value})}
+                onChange={(e) => updateFilter('formStatus', e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm
                            focus:outline-none focus:ring-1"
               >
@@ -183,19 +211,21 @@ export default function FormsPage() {
                 <option value="ARCHIVED">Archived</option>
               </select>
 
+            {user?.role !== 'FIELD_SUPERVISOR' && (
               <input
                 type="text"
-                placeholder="Search ACT name..."
+                placeholder="Supervisor name..."
                 value={filters.actName}
-                onChange={(e) => setFilters({...filters, actName: e.target.value})}
+                onChange={(e) => updateFilter('actName', e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm
                            focus:outline-none focus:ring-1"
               />
+            )}
 
               <input
                 type="date"
                 value={filters.from}
-                onChange={(e) => setFilters({...filters, from: e.target.value})}
+                onChange={(e) => updateFilter('from', e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm
                            focus:outline-none focus:ring-1"
               />
@@ -203,14 +233,13 @@ export default function FormsPage() {
               <input
                 type="date"
                 value={filters.to}
-                onChange={(e) => setFilters({...filters, to: e.target.value})}
+                onChange={(e) => updateFilter('to', e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm
                            focus:outline-none focus:ring-1"
               />
             </div>
           )}
         </div>
-      )}
 
       {/* Upload Modal */}
       {showUpload && (
@@ -336,6 +365,37 @@ export default function FormsPage() {
           </table>
         )}
       </div>
+
+      {!isLoading && totalElements > 0 && (
+        <div className="mt-4 flex flex-col gap-3 rounded-xl border bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-gray-500">
+            Showing <span className="font-medium text-gray-800">{firstItem}</span>
+            {' '}to <span className="font-medium text-gray-800">{lastItem}</span>
+            {' '}of <span className="font-medium text-gray-800">{totalElements}</span> forms
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(current => Math.max(current - 1, 0))}
+              disabled={page === 0}
+              className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft size={15} />
+              Previous
+            </button>
+            <span className="rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">
+              Page {page + 1} of {Math.max(totalPages, 1)}
+            </span>
+            <button
+              onClick={() => setPage(current => current + 1)}
+              disabled={page + 1 >= totalPages}
+              className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

@@ -12,6 +12,7 @@ public record DashboardStatsResponse(
         long archivedForms,
         long totalUsers,
         long activeUsers,
+        long uploadedToday,
         Map<String, Long> formsByType,
         Map<String, Long> formsByStatus
 ) {}

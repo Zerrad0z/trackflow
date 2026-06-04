@@ -193,13 +193,17 @@ public class ValidationServiceImpl implements ValidationService {
     @Transactional(readOnly = true)
     public ValidationResponse getLatestValidation(UUID formId) {
         Form form = formRepository.findById(formId)
-                .orElseThrow(() -> new RuntimeException("Form not found: " + formId));
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found: " + formId));
 
         AiValidation validation = aiValidationRepository.findByFormOrderByRunAtDesc(form)
                 .stream()
                 .filter(AiValidation::getIsLatest)
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("No validation found for form: " + formId));
+                .orElse(null);
+
+        if (validation == null) {
+            return null;
+        }
 
         return toValidationResponse(validation);
     }

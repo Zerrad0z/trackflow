@@ -4,8 +4,11 @@ import com.trackflow.module.dashboard.dto.DashboardStatsResponse;
 import com.trackflow.module.form.entity.Form;
 import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.repository.FormRepository;
+import com.trackflow.module.user.entity.User;
+import com.trackflow.module.user.entity.UserRole;
 import com.trackflow.module.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -27,9 +30,21 @@ public class DashboardService {
         LocalDateTime startOfMonth = LocalDate.now()
                 .withDayOfMonth(1).atStartOfDay();
 
-        List<Form> allForms = formRepository.findAll();
+        // Get current user
+        User currentUser = (User) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+
+        boolean isSupervisor = currentUser.getRole() == UserRole.FIELD_SUPERVISOR;
+
+        // Filter forms based on role
+        List<Form> allForms = isSupervisor
+                ? formRepository.findByUploadedBy(currentUser)
+                : formRepository.findAll();
 
         long totalForms = allForms.size();
+        long uploadedToday = allForms.stream()
+                .filter(f -> f.getUploadedAt().isAfter(startOfDay))
+                .count();
         long pendingValidation = allForms.stream()
                 .filter(f -> f.getFormStatus() == FormStatus.PENDING_VALIDATION)
                 .count();
@@ -55,11 +70,6 @@ public class DashboardService {
                 .filter(f -> f.getFormStatus() == FormStatus.ARCHIVED)
                 .count();
 
-        long totalUsers = userRepository.count();
-        long activeUsers = userRepository.findAll().stream()
-                .filter(u -> u.getIsActive())
-                .count();
-
         Map<String, Long> formsByType = allForms.stream()
                 .collect(java.util.stream.Collectors.groupingBy(
                         f -> f.getFormType().name(),
@@ -73,7 +83,7 @@ public class DashboardService {
         return new DashboardStatsResponse(
                 totalForms, pendingValidation, pendingConfirmation,
                 confirmedToday, confirmedThisWeek, confirmedThisMonth,
-                archivedForms, totalUsers, activeUsers,
+                archivedForms, 0L, 0L, uploadedToday,
                 formsByType, formsByStatus
         );
     }
