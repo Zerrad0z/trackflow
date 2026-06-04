@@ -8,6 +8,7 @@ import com.trackflow.module.report.dto.ReportResponse;
 import com.trackflow.module.report.entity.Report;
 import com.trackflow.module.report.repository.ReportRepository;
 import com.trackflow.module.user.entity.User;
+import com.trackflow.module.user.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;
@@ -39,28 +40,29 @@ public class ReportServiceImpl implements ReportService {
     @Transactional
     public ReportResponse generateReport(ReportRequest request) {
         User currentUser = getCurrentUser();
+        boolean isSupervisor = currentUser.getRole() == UserRole.FIELD_SUPERVISOR;
 
         // Determine date range
         LocalDateTime from = resolveFromDate(request);
         LocalDateTime to = LocalDateTime.now();
 
-        // Fetch forms in range
+        // Fetch forms — supervisor sees only own, manager sees all
         List<Form> forms = formRepository.findAll().stream()
                 .filter(f -> f.getUploadedAt().isAfter(from)
                         && f.getUploadedAt().isBefore(to))
+                .filter(f -> !isSupervisor ||
+                        f.getUploadedBy().getId().equals(currentUser.getId()))
                 .toList();
 
-        // Generate title
         String title = "TrackFlow Report — " + request.reportType()
+                + (isSupervisor ? " — " + currentUser.getFullName() : "")
                 + " (" + from.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                 + " to " + to.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ")";
 
-        // Generate file
         String filePath = request.format().equalsIgnoreCase("PDF")
                 ? pdfReportService.generateFormReport(forms, title)
                 : excelReportService.generateFormReport(forms, title);
 
-        // Save report record
         Report report = Report.builder()
                 .generatedBy(currentUser)
                 .reportType(request.reportType())
@@ -69,8 +71,6 @@ public class ReportServiceImpl implements ReportService {
                 .build();
 
         Report saved = reportRepository.save(report);
-        log.info("Report generated: {} with {} forms", saved.getId(), forms.size());
-
         return toResponse(saved);
     }
 

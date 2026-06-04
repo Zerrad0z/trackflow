@@ -8,6 +8,7 @@ import com.trackflow.module.user.dto.UserMapper;
 import com.trackflow.module.user.dto.UserResponse;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -15,7 +16,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
@@ -33,12 +37,16 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException("Invalid credentials");
         }
 
-        String token = jwtUtils.generateToken(user);
+        // Activate on first login
+        if (!user.getIsActive()) {
+            user.setIsActive(true);
+            user.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(user);
+            log.info("User {} activated on first login", user.getEmail());
+        }
 
-        return new LoginResponse(
-                token,
-                userMapper.toResponse(user)
-        );
+        String token = jwtUtils.generateToken(user);
+        return new LoginResponse(token, userMapper.toResponse(user));
     }
 
     @Override

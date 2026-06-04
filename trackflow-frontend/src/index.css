@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+:root {
+  --oncf-orange: #E8500A;
+  --oncf-orange-light: #FF6B1A;
+  --oncf-orange-dark: #C43D00;
+  --oncf-black: #1A1A1A;
+  --oncf-gray: #F5F5F5;
+}
+
+button, [role="button"], a, select, input[type="file"] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}

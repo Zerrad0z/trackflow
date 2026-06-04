@@ -1,14 +1,19 @@
 package com.trackflow.module.form.controller;
 
+import com.trackflow.module.form.dto.AddFieldRequest;
 import com.trackflow.module.form.dto.FormFieldResponse;
+import com.trackflow.module.form.dto.FormFieldSchemaResponse;
 import com.trackflow.module.form.dto.FormResponse;
+import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.entity.FormType;
 import com.trackflow.module.form.service.FormService;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +23,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,14 +46,30 @@ public class FormController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<Page<FormResponse>> getForms(Pageable pageable) {
+    public ResponseEntity<Page<FormResponse>> getForms(
+            @RequestParam(required = false) FormType formType,
+            @RequestParam(required = false) FormStatus formStatus,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) UUID uploadedById,
+            @RequestParam(required = false) String actName,
+            Pageable pageable) {
+
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         User user = (User) auth.getPrincipal();
 
+        LocalDateTime fromDate = from != null ?
+                LocalDate.parse(from).atStartOfDay() : null;
+        LocalDateTime toDate = to != null ?
+                LocalDate.parse(to).atTime(23, 59, 59) : null;
+
         if (user.getRole() == UserRole.FIELD_SUPERVISOR) {
-            return ResponseEntity.ok(formService.getMyForms(pageable));
+            return ResponseEntity.ok(formService.getFormsWithFilters(
+                    formType, formStatus, fromDate, toDate, user.getId(), actName, pageable));
         }
-        return ResponseEntity.ok(formService.getAllForms(pageable));
+
+        return ResponseEntity.ok(formService.getFormsWithFilters(
+                formType, formStatus, fromDate, toDate, uploadedById, actName, pageable));
     }
 
     @GetMapping("/{id}")
@@ -71,5 +94,45 @@ public class FormController {
     @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER')")
     public ResponseEntity<FormResponse> archiveForm(@PathVariable UUID id) {
         return ResponseEntity.ok(formService.archiveForm(id));
+    }
+
+    @GetMapping("/schemas/{formType}")
+    public ResponseEntity<List<FormFieldSchemaResponse>> getSchema(
+            @PathVariable FormType formType) {
+        return ResponseEntity.ok(formService.getFormSchema(formType));
+    }
+
+    @PostMapping("/{id}/fields")
+    @PreAuthorize("hasRole('FIELD_SUPERVISOR')")
+    public ResponseEntity<FormFieldResponse> addField(
+            @PathVariable UUID id,
+            @RequestBody AddFieldRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(formService.addField(id, request));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<Resource> exportForms(
+            @RequestParam(required = false) FormType formType,
+            @RequestParam(required = false) FormStatus formStatus,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String actName) {
+
+        LocalDateTime fromDate = from != null ?
+                LocalDate.parse(from).atStartOfDay() : null;
+        LocalDateTime toDate = to != null ?
+                LocalDate.parse(to).atTime(23, 59, 59) : null;
+
+        Resource file = formService.exportFormsToExcel(
+                formType, formStatus, fromDate, toDate, actName);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"forms_export.xlsx\"")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 }

@@ -1,6 +1,7 @@
 package com.trackflow.module.user.dto;
 
 import com.trackflow.module.user.entity.UserRole;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,7 +15,7 @@ public record CreateUserRequest(
         @Email(message = "Invalid email format")
         String email,
 
-        @NotBlank(message = "Password is required")
+        @Nullable
         @Size(min = 8, message = "Password must be at least 8 characters")
         String password,
 

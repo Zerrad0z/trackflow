@@ -1,9 +1,6 @@
 package com.trackflow.module.user.controller;
 
-import com.trackflow.module.user.dto.CreateUserRequest;
-import com.trackflow.module.user.dto.UpdateRoleRequest;
-import com.trackflow.module.user.dto.UpdateStatusRequest;
-import com.trackflow.module.user.dto.UserResponse;
+import com.trackflow.module.user.dto.*;
 import com.trackflow.module.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +55,15 @@ public class UserController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateStatusRequest request) {
         userService.updateUserStatus(id, request.isActive());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> resetPassword(
+            @PathVariable UUID id,
+            @RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(id, request.password());
         return ResponseEntity.noContent().build();
     }
 }

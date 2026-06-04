@@ -7,6 +7,7 @@ import com.trackflow.common.exception.ResourceNotFoundException;
 import com.trackflow.module.form.entity.FieldStatus;
 import com.trackflow.module.form.entity.Form;
 import com.trackflow.module.form.entity.FormField;
+import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.repository.FormFieldRepository;
 import com.trackflow.module.form.repository.FormRepository;
 import com.trackflow.module.validation.dto.*;
@@ -103,6 +104,8 @@ public class ValidationServiceImpl implements ValidationService {
                     .toList();
 
             fieldSuggestionRepository.saveAll(fieldSuggestions);
+            form.setFormStatus(FormStatus.PENDING_CONFIRMATION);
+            formRepository.save(form);
 
             // 8. Update validation status to COMPLETED
             validation.setStatus(ValidationStatus.COMPLETED);
@@ -190,13 +193,17 @@ public class ValidationServiceImpl implements ValidationService {
     @Transactional(readOnly = true)
     public ValidationResponse getLatestValidation(UUID formId) {
         Form form = formRepository.findById(formId)
-                .orElseThrow(() -> new RuntimeException("Form not found: " + formId));
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found: " + formId));
 
         AiValidation validation = aiValidationRepository.findByFormOrderByRunAtDesc(form)
                 .stream()
                 .filter(AiValidation::getIsLatest)
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("No validation found for form: " + formId));
+                .orElse(null);
+
+        if (validation == null) {
+            return null;
+        }
 
         return toValidationResponse(validation);
     }

@@ -5,6 +5,7 @@ import com.trackflow.module.user.dto.UserResponse;
 import com.trackflow.module.user.entity.UserRole;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -19,4 +20,7 @@ public interface UserService {
     void updateUserRole(UUID id, UserRole role);
 
     void updateUserStatus(UUID id, boolean isActive);
+
+    @Transactional
+    void resetPassword(UUID id, String newPassword);
 }
