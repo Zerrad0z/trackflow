@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../components/common/Layout'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboardService'
+import { useLanguage } from '../context/LanguageContext'
 import {
   FileText, CheckCircle, Clock, Archive,
    AlertCircle, TrendingUp, ArrowRight, Upload
@@ -11,6 +12,7 @@ import {
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -22,7 +24,7 @@ export default function DashboardPage() {
 
   const statCards = [
     {
-      label: 'Total Forms',
+      label: t('dashboard.totalForms'),
       value: stats?.totalForms || 0,
       icon: <FileText size={20} />,
       color: '#E8500A',
@@ -30,7 +32,7 @@ export default function DashboardPage() {
       path: '/forms'
     },
     {
-      label: 'Uploaded Today',
+      label: t('dashboard.uploadedToday'),
       value: stats?.uploadedToday || 0,
       icon: <Upload size={20} />,
       color: '#E8500A',
@@ -38,7 +40,7 @@ export default function DashboardPage() {
       path: `/forms?from=${today}&to=${today}`
     },
     {
-      label: 'Pending Validation',
+      label: t('dashboard.pendingValidation'),
       value: stats?.pendingValidation || 0,
       icon: <Clock size={20} />,
       color: '#F59E0B',
@@ -46,7 +48,7 @@ export default function DashboardPage() {
       path: '/forms?formStatus=PENDING_VALIDATION'
     },
     {
-      label: 'Pending Confirmation',
+      label: t('dashboard.pendingConfirmation'),
       value: stats?.pendingConfirmation || 0,
       icon: <AlertCircle size={20} />,
       color: '#8B5CF6',
@@ -54,7 +56,7 @@ export default function DashboardPage() {
       path: '/forms?formStatus=PENDING_CONFIRMATION'
     },
     {
-      label: 'Confirmed This Month',
+      label: t('dashboard.confirmedThisMonth'),
       value: stats?.confirmedThisMonth || 0,
       icon: <CheckCircle size={20} />,
       color: '#10B981',
@@ -62,7 +64,7 @@ export default function DashboardPage() {
       path: '/forms?formStatus=CONFIRMED'
     },
     {
-      label: 'Archived Forms',
+      label: t('dashboard.archivedForms'),
       value: stats?.archivedForms || 0,
       icon: <Archive size={20} />,
       color: '#6B7280',
@@ -91,10 +93,10 @@ export default function DashboardPage() {
     <Layout>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">
-          Welcome back, {user?.fullName?.split(' ')[0]} 👋
+          {t('dashboard.welcomeBack', { name: user?.fullName?.split(' ')[0] })} 👋
         </h2>
         <p className="text-gray-500 mt-1">
-          Here's what's happening with TrackFlow today.
+          {t('dashboard.subtitle')}
         </p>
       </div>
 
@@ -140,7 +142,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl p-5 border shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp size={16} style={{ color: '#E8500A' }} />
-                <h3 className="font-semibold text-gray-800">Forms by Type</h3>
+                <h3 className="font-semibold text-gray-800">{t('dashboard.formsByType')}</h3>
               </div>
               <div className="space-y-3">
                 {Object.entries(stats?.formsByType || {}).map(([type, count]) => (
@@ -152,7 +154,7 @@ export default function DashboardPage() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-600 group-hover:text-gray-900
                                        transition-colors">
-                        {type.replace(/_/g, ' ')}
+                        {t(`forms.types.${type}`) || type.replace(/_/g, ' ')}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-900">{count}</span>
@@ -179,7 +181,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl p-5 border shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <FileText size={16} style={{ color: '#E8500A' }} />
-                <h3 className="font-semibold text-gray-800">Forms by Status</h3>
+                <h3 className="font-semibold text-gray-800">{t('dashboard.formsByStatus')}</h3>
               </div>
               <div className="space-y-3">
                 {Object.entries(stats?.formsByStatus || {}).map(([status, count]) => (
@@ -191,7 +193,7 @@ export default function DashboardPage() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-600 group-hover:text-gray-900
                                        transition-colors">
-                        {status.replace(/_/g, ' ')}
+                        {t(`forms.statuses.${status}`) || status.replace(/_/g, ' ')}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-900">{count}</span>
@@ -219,18 +221,18 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2 mb-4">
                 <CheckCircle size={16} style={{ color: '#E8500A' }} />
                 <h3 className="font-semibold text-gray-800">
-                  Confirmation Summary
+                  {t('dashboard.confirmationSummary')}
                 </h3>
               </div>
               <div className="space-y-3">
                 {[
-                  { label: 'Confirmed Today',
+                  { label: t('dashboard.confirmedToday'),
                     value: stats?.confirmedToday,
                     path: `/forms?formStatus=CONFIRMED&from=${today}&to=${today}` },
-                  { label: 'Confirmed This Week',
+                  { label: t('dashboard.confirmedThisWeek'),
                     value: stats?.confirmedThisWeek,
                     path: '/forms?formStatus=CONFIRMED' },
-                  { label: 'Confirmed This Month',
+                  { label: t('dashboard.confirmedThisMonth'),
                     value: stats?.confirmedThisMonth,
                     path: '/forms?formStatus=CONFIRMED' },
                 ].map(item => (
@@ -259,22 +261,22 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl p-5 border shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp size={16} style={{ color: '#E8500A' }} />
-                <h3 className="font-semibold text-gray-800">Quick Actions</h3>
+                <h3 className="font-semibold text-gray-800">{t('dashboard.quickActions')}</h3>
               </div>
               <div className="space-y-2">
                 {[
-                  { label: 'Uploaded Today',
+                  { label: t('dashboard.uploadedToday'),
                     path: `/forms?from=${today}&to=${today}`,
-                    desc: `${stats?.uploadedToday || 0} forms today` },
-                  { label: 'Pending Validation',
+                    desc: t('dashboard.formsToday', { count: stats?.uploadedToday || 0 }) },
+                  { label: t('dashboard.pendingValidation'),
                     path: '/forms?formStatus=PENDING_VALIDATION',
-                    desc: `${stats?.pendingValidation} forms waiting` },
-                  { label: 'Pending Confirmation',
+                    desc: t('dashboard.formsWaiting', { count: stats?.pendingValidation }) },
+                  { label: t('dashboard.pendingConfirmation'),
                     path: '/forms?formStatus=PENDING_CONFIRMATION',
-                    desc: `${stats?.pendingConfirmation} forms waiting` },
-                  { label: 'Generate Report',
+                    desc: t('dashboard.formsWaiting', { count: stats?.pendingConfirmation }) },
+                  { label: t('dashboard.generateReport'),
                     path: '/reports',
-                    desc: 'PDF or Excel' },
+                    desc: t('dashboard.reportFormats') },
                 ].map(action => (
                   <button
                     key={action.label}

@@ -3,25 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/common/Layout'
 import { notificationService } from '../../services/notificationService'
 import { getNotificationLink, isNotificationClickable } from '../../utils/notificationLinks'
+import { useLanguage } from '../../context/LanguageContext'
 import { Bell, Check, CheckCheck, ExternalLink } from 'lucide-react'
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications'],
-    queryFn: () => notificationService.getMyNotifications().then(r => {
-      // DEBUG: Log all notifications to see their structure
-      console.log('All notifications:', r.data.content)
-      // DEBUG: Log unique notification types
-      const types = [...new Set(r.data.content.map(n => n.notificationType))];
-      console.log('Available notification types:', types);
-      // DEBUG: Log notifications that are not clickable
-      const notClickable = r.data.content.filter(n => !isNotificationClickable(n));
-      console.log('Non-clickable notifications:', notClickable);
-      return r.data
-    })
+    queryFn: () => notificationService.getMyNotifications().then(r => r.data)
   })
 
   const markReadMutation = useMutation({
@@ -41,11 +33,7 @@ export default function NotificationsPage() {
   })
 
   const handleNotificationClick = (notification) => {
-    // DEBUG: Log when a notification is clicked
-    console.log('Clicked notification:', notification)
     const link = getNotificationLink(notification)
-    console.log('Generated link:', link)
-    
     if (!link) return
 
     if (!notification.isRead) {
@@ -62,10 +50,10 @@ export default function NotificationsPage() {
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold text-gray-800">Notifications</h2>
+            <h2 className="text-xl font-semibold text-gray-800">{t('notifications.title')}</h2>
             {unreadCount > 0 && (
               <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                {unreadCount} unread
+                {unreadCount} {t('notifications.unread')}
               </span>
             )}
           </div>
@@ -76,7 +64,7 @@ export default function NotificationsPage() {
               className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
             >
               <CheckCheck size={16} />
-              Mark all as read
+              {t('notifications.markAllAsRead')}
             </button>
           )}
         </div>
@@ -84,24 +72,16 @@ export default function NotificationsPage() {
         <div className="bg-white rounded-lg shadow divide-y">
           {isLoading ? (
             <div className="p-8 text-center text-gray-500">
-              <div className="animate-pulse">Loading notifications...</div>
+              <div className="animate-pulse">{t('notifications.loading')}</div>
             </div>
           ) : notifications.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <Bell size={40} className="mx-auto text-gray-300 mb-2" />
-              <p>No notifications yet.</p>
+              <p>{t('notifications.noNotifications')}</p>
             </div>
           ) : (
             notifications.map(n => {
               const clickable = isNotificationClickable(n)
-              
-              // DEBUG: Log each notification's clickable status
-              console.log(`Notification ${n.id}:`, {
-                type: n.notificationType,
-                referenceId: n.referenceId,
-                clickable: clickable,
-                fullNotification: n
-              })
 
               return (
                 <div
@@ -132,7 +112,7 @@ export default function NotificationsPage() {
                         {clickable && (
                           <span className="inline-flex items-center gap-1 text-xs text-blue-600">
                             <ExternalLink size={12} />
-                            View form
+                            {t('notifications.viewForm')}
                           </span>
                         )}
                       </div>
@@ -146,7 +126,7 @@ export default function NotificationsPage() {
                       }}
                       disabled={markReadMutation.isLoading}
                       className="text-blue-600 hover:text-blue-800 ml-4 flex-shrink-0 disabled:opacity-50"
-                      title="Mark as read"
+                      title={t('notifications.markAsRead')}
                     >
                       <Check size={16} />
                     </button>
