@@ -6,7 +6,7 @@ import {
   CheckCircle, XCircle, Edit3, ArrowLeft,
   FileText, ClipboardList, Plus, X, Archive
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -52,13 +52,26 @@ export default function FormDetailPage() {
   const { data: validation, isLoading: validationLoading } = useQuery({
     queryKey: ['validation', id],
     queryFn: () => formService.getLatestValidation(id).then(r => r.data || null),
-    enabled: activeTab === 'validation',
+    // Fetch latest validation when the form is loaded so AI suggestions
+    // produced by the backend are visible immediately (not only after CONFIRMED).
+    enabled: !!form,
     retry: false
   })
 
   const isLettreSommation = form?.formType === 'LETTRE_SOMMATION_BILLET' ||
                             form?.formType === 'LETTRE_SOMMATION_CARTE'
   const isBillet = form?.formType === 'LETTRE_SOMMATION_BILLET'
+
+  // Check if form has been validated by manager (has completed validation)
+  const isFormValidatedByManager = form?.validatedByManager === true
+
+  // Allow supervisor confirmation when either the form is in PENDING_CONFIRMATION
+  // (and lettre-sommation-specific checks pass) OR when the latest AI validation
+  // completed with no suggestions (backend allows this path as well).
+  const canSupervisorConfirm = !!form && form.formStatus !== 'CONFIRMED' && form.formStatus !== 'ARCHIVED' && (
+    (form.formStatus === 'PENDING_CONFIRMATION' && (!isLettreSommation || infractionSaved)) ||
+    (validation && validation.status === 'COMPLETED' && (validation.suggestions?.length || 0) === 0)
+  )
 
   const decideMutation = useMutation({
     mutationFn: ({ suggestionId, decision, overrideValue }) =>
@@ -99,6 +112,15 @@ export default function FormDetailPage() {
     onError: () => toast.error('Failed to save infraction status')
   })
 
+  const validateMutation = useMutation({
+    mutationFn: () => formService.triggerValidation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['form', id])
+      toast.success('Form validated. The supervisor has been notified.')
+    },
+    onError: () => toast.error('Failed to validate form')
+  })
+
   const enterEditMode = () => {
     const values = {}
     mergedFields.forEach(f => { values[f.fieldName] = f.extractedValue || '' })
@@ -118,7 +140,11 @@ export default function FormDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries(['fields', id])
       setEditMode(false)
-      toast.success('Fields updated successfully!')
+      toast.success(
+        user?.role === 'MANAGER'
+          ? 'Fields updated. The supervisor has been notified.'
+          : 'Fields updated successfully!'
+      )
     },
     onError: () => toast.error('Failed to update fields')
   })
@@ -181,6 +207,19 @@ export default function FormDetailPage() {
     !infractionFieldNames.includes(f.fieldName)
   ) || []
 
+  const isManager = user?.role === 'MANAGER'
+  const showValidationTab = user?.role !== 'MANAGER' && form?.formStatus !== 'CONFIRMED' && form?.formStatus !== 'ARCHIVED'
+  const canManagerAct = form?.formStatus === 'CONFIRMED' && !form?.validatedByManager
+  const canEditFields = isManager 
+    ? canManagerAct 
+    : (form?.formStatus !== 'ARCHIVED' && form?.formStatus !== 'CONFIRMED')
+
+  useEffect(() => {
+    if (!showValidationTab && activeTab === 'validation') {
+      setActiveTab('fields')
+    }
+  }, [showValidationTab, activeTab])
+
   return (
     <Layout>
       {/* Back button and Actions */}
@@ -196,6 +235,36 @@ export default function FormDetailPage() {
         {/* Actions */}
         {user?.role === 'FIELD_SUPERVISOR' && form && form.formStatus !== 'ARCHIVED' && (
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowArchiveConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm
+                         font-medium border border-gray-300 text-gray-600
+                         hover:bg-gray-50 transition"
+            >
+              <Archive size={16} />
+              Archive
+            </button>
+          </div>
+        )}
+        {user?.role === 'MANAGER' && form && canManagerAct && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => validateMutation.mutate()}
+              disabled={validateMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm
+                         font-medium text-white transition disabled:opacity-50"
+              style={{ backgroundColor: '#E8500A' }}
+            >
+              {validateMutation.isPending ? (
+                <span className="relative flex h-3 w-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
+                </span>
+              ) : (
+                <CheckCircle size={16} />
+              )}
+              {validateMutation.isPending ? 'Validating...' : 'Validate Form'}
+            </button>
             <button
               onClick={() => setShowArchiveConfirm(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm
@@ -246,19 +315,32 @@ export default function FormDetailPage() {
               </p>
             </div>
             <div>
-              <p className="text-gray-500">Confirmed by</p>
+              <p className="text-gray-500">
+                {form.validatedByManager ? 'Validated by' : 'Confirmed by'}
+              </p>
               <p className="font-medium">
-                {form.confirmedBy?.fullName || '—'}
+                {(form.validatedByManager ? form.validatedByManagerBy?.fullName : form.confirmedBy?.fullName) || '—'}
               </p>
             </div>
           </div>
         </div>
       )}
 
+      {isManager && form && !canManagerAct && form.formStatus !== 'ARCHIVED' && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Edit, validate, and archive are available after the supervisor confirms this form.
+        </div>
+      )}
+
+      {user?.role === 'FIELD_SUPERVISOR' && form && form.formStatus === 'CONFIRMED' && (
+        <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          This form has been validated by the manager and is now locked. You cannot make further edits.
+        </div>
+      )}
+
       {user?.role === 'FIELD_SUPERVISOR' && form && (
         <div className="mb-6 flex items-center gap-3">
-          {form.formStatus === 'PENDING_CONFIRMATION' &&
-           (!isLettreSommation || infractionSaved) ? (
+          {canSupervisorConfirm ? (
             <button
               onClick={() => setShowConfirmFormDialog(true)}
               disabled={confirmMutation.isPending}
@@ -269,10 +351,15 @@ export default function FormDetailPage() {
               <CheckCircle size={16} />
               {confirmMutation.isPending ? 'Confirming...' : 'Confirm Form'}
             </button>
-          ) : form.formStatus === 'CONFIRMED' ? (
+          ) : form.formStatus === 'CONFIRMED' && isFormValidatedByManager ? (
             <div className="inline-flex items-center gap-2 rounded-lg bg-green-50 px-4 py-2 text-sm font-medium text-green-700">
               <CheckCircle size={16} />
-              Form already confirmed
+              Form validated by manager (locked)
+            </div>
+          ) : form.formStatus === 'CONFIRMED' ? (
+            <div className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
+              <CheckCircle size={16} />
+              Form confirmed - waiting for manager validation
             </div>
           ) : form.formStatus !== 'ARCHIVED' && (
             <div className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-500">
@@ -285,12 +372,13 @@ export default function FormDetailPage() {
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Tabs — supervisors only; managers edit fields directly */}
+      {user?.role !== 'MANAGER' && (
       <div className="flex gap-1 mb-6 bg-white rounded-lg p-1 shadow-sm
                       border w-fit">
         {[
           { id: 'fields', label: 'Form Fields', icon: <ClipboardList size={15} /> },
-          { id: 'validation', label: 'AI Validation', icon: <CheckCircle size={15} /> }
+          ...(showValidationTab ? [{ id: 'validation', label: 'AI Validation', icon: <CheckCircle size={15} /> }] : [])
         ].map(tab => (
           <button
             key={tab.id}
@@ -309,16 +397,17 @@ export default function FormDetailPage() {
           </button>
         ))}
       </div>
+      )}
 
       {/* Fields Tab */}
-      {activeTab === 'fields' && (
+      {(activeTab === 'fields' || user?.role === 'MANAGER') && (
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="font-semibold text-gray-800">Extracted Fields</h3>
             <div className="flex items-center gap-2">
-              {!editMode &&
-               form?.formStatus !== 'ARCHIVED' && (
+              {!editMode && canEditFields && (
                 <>
+                  {(user?.role === 'FIELD_SUPERVISOR' || canManagerAct) && (
                   <button
                     onClick={enterEditMode}
                     className="flex items-center gap-1 text-sm px-3 py-1.5
@@ -328,6 +417,8 @@ export default function FormDetailPage() {
                     <Edit3 size={14} />
                     Edit Fields
                   </button>
+                  )}
+                  {user?.role === 'FIELD_SUPERVISOR' && form?.formStatus !== 'CONFIRMED' && (
                   <button
                     onClick={() => setShowAddField(true)}
                     className="flex items-center gap-1 text-sm px-3 py-1.5
@@ -337,9 +428,10 @@ export default function FormDetailPage() {
                     <Plus size={14} />
                     Add Field
                   </button>
+                  )}
                 </>
               )}
-              {editMode && form?.formStatus !== 'ARCHIVED' && (
+              {editMode && canEditFields && (
                 <>
                   <button
                     onClick={() => setEditMode(false)}
@@ -386,7 +478,7 @@ export default function FormDetailPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    {editMode && form?.formStatus !== 'ARCHIVED' ? (
+                    {editMode && canEditFields ? (
                       <input
                         type="text"
                         value={editValues[field.fieldName] || ''}
@@ -482,7 +574,7 @@ export default function FormDetailPage() {
                   return (
                     <div key={item.fieldName} className="bg-gray-50 rounded-lg p-3">
                       <p className="text-xs text-gray-400 mb-1">{item.label}</p>
-                      {editMode && form?.formStatus !== 'ARCHIVED' ? (
+                      {editMode && canEditFields ? (
                         item.fieldName === 'statut' ? (
                           <select
                             value={editValues[item.fieldName] ?? value ?? ''}
@@ -598,8 +690,8 @@ export default function FormDetailPage() {
         </div>
       )}
 
-      {/* Validation Tab */}
-      {activeTab === 'validation' && (
+      {/* Validation Tab — supervisors only */}
+      {activeTab === 'validation' && user?.role !== 'MANAGER' && showValidationTab && (
         <div className="bg-white rounded-xl shadow-sm border p-6">
           <h3 className="font-semibold mb-4">AI Validation Results</h3>
           {validationLoading ? (
