@@ -1,15 +1,18 @@
 import { AlertTriangle } from 'lucide-react'
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function ConfirmDialog({
   isOpen,
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   onConfirm,
   onCancel,
   danger = false
 }) {
+  const { t } = useLanguage()
+  
   if (!isOpen) return null
 
   return (
@@ -31,7 +34,7 @@ export default function ConfirmDialog({
             className="flex-1 border border-gray-300 text-gray-700 py-2
                        rounded-lg text-sm font-medium hover:bg-gray-50 transition"
           >
-            {cancelLabel}
+            {cancelLabel || t('confirmDialog.cancel')}
           </button>
           <button
             onClick={onConfirm}
@@ -39,7 +42,7 @@ export default function ConfirmDialog({
                        font-medium transition"
             style={{ backgroundColor: danger ? '#EF4444' : '#E8500A' }}
           >
-            {confirmLabel}
+            {confirmLabel || t('confirmDialog.confirm')}
           </button>
         </div>
       </div>

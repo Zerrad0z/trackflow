@@ -3,10 +3,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useQuery } from '@tanstack/react-query'
 import { notificationService } from '../../services/notificationService'
+import { useLanguage } from '../../context/LanguageContext'
 import {
   LayoutDashboard, FileText, BarChart3,
   Users, LogOut, ChevronLeft, ChevronRight,
-  Bell, Train, Menu
+  Bell, Train, Menu, Globe
 } from 'lucide-react'
 
 const ONCF_ORANGE = '#E8500A'
@@ -16,6 +17,7 @@ export default function Layout({ children }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { t, language, toggleLanguage } = useLanguage()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
@@ -34,31 +36,31 @@ export default function Layout({ children }) {
 
   const navItems = [
     {
-      label: 'Dashboard',
+      label: t('nav.dashboard'),
       path: '/dashboard',
       roles: ['FIELD_SUPERVISOR', 'MANAGER'],
       icon: LayoutDashboard
     },
     {
-      label: 'Forms',
+      label: t('nav.forms'),
       path: '/forms',
       roles: ['FIELD_SUPERVISOR', 'MANAGER'],
       icon: FileText
     },
     {
-      label: 'Reports',
+      label: t('nav.reports'),
       path: '/reports',
       roles: ['FIELD_SUPERVISOR', 'MANAGER'],
       icon: BarChart3
     },
     {
-      label: 'Users',
+      label: t('nav.users'),
       path: '/users',
       roles: ['ADMIN'],
       icon: Users
     },
     {
-      label: 'Notifications',
+      label: t('nav.notifications'),
       path: '/notifications',
       roles: ['FIELD_SUPERVISOR', 'MANAGER', 'ADMIN'],
       icon: Bell
@@ -70,9 +72,9 @@ export default function Layout({ children }) {
   )
 
   const roleLabels = {
-    FIELD_SUPERVISOR: 'Field Supervisor',
-    MANAGER: 'Manager',
-    ADMIN: 'Administrator'
+    FIELD_SUPERVISOR: t('roles.supervisor'),
+    MANAGER: t('roles.manager'),
+    ADMIN: t('roles.admin')
   }
 
   const currentPage = visibleItems.find(i => i.path === location.pathname)
@@ -188,7 +190,7 @@ export default function Layout({ children }) {
             className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-400 transition hover:bg-red-500/10 hover:text-red-300"
           >
             <LogOut size={18} />
-            {showSidebarText && <span>Logout</span>}
+            {showSidebarText && <span>{t('nav.logout')}</span>}
           </button>
         </div>
       </aside>
@@ -217,10 +219,20 @@ export default function Layout({ children }) {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Language Toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-[#E8500A]"
+              aria-label="Toggle language"
+            >
+              <Globe size={16} />
+              <span className="hidden sm:inline">{language === 'en' ? 'FR' : 'EN'}</span>
+            </button>
+
             <button
               onClick={() => navigate('/notifications')}
               className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-orange-200 hover:bg-orange-50 hover:text-[#E8500A]"
-              aria-label="Open notifications"
+              aria-label={t('nav.notifications')}
             >
               <Bell size={19} />
               {unreadCount > 0 && (

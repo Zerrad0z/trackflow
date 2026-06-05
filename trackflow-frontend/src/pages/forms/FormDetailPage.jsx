@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/common/Layout'
 import { formService } from '../../services/formService'
+import { useLanguage } from '../../context/LanguageContext'
 import {
   CheckCircle, XCircle, Edit3, ArrowLeft,
   FileText, ClipboardList, Plus, X, Archive
@@ -17,6 +18,7 @@ export default function FormDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [overrideValues, setOverrideValues] = useState({})
   const [showAddField, setShowAddField] = useState(false)
   const [newField, setNewField] = useState({ fieldName: '', extractedValue: '' })
@@ -28,7 +30,6 @@ export default function FormDetailPage() {
   const [infractionSaved, setInfractionSaved] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [editValues, setEditValues] = useState({})
-  const [editInfraction, setEditInfraction] = useState(false)
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
   const [showConfirmFormDialog, setShowConfirmFormDialog] = useState(false)
   const [showDecisionConfirm, setShowDecisionConfirm] = useState(null)
@@ -52,8 +53,6 @@ export default function FormDetailPage() {
   const { data: validation, isLoading: validationLoading } = useQuery({
     queryKey: ['validation', id],
     queryFn: () => formService.getLatestValidation(id).then(r => r.data || null),
-    // Fetch latest validation when the form is loaded so AI suggestions
-    // produced by the backend are visible immediately (not only after CONFIRMED).
     enabled: !!form,
     retry: false
   })
@@ -62,12 +61,8 @@ export default function FormDetailPage() {
                             form?.formType === 'LETTRE_SOMMATION_CARTE'
   const isBillet = form?.formType === 'LETTRE_SOMMATION_BILLET'
 
-  // Check if form has been validated by manager (has completed validation)
   const isFormValidatedByManager = form?.validatedByManager === true
 
-  // Allow supervisor confirmation when either the form is in PENDING_CONFIRMATION
-  // (and lettre-sommation-specific checks pass) OR when the latest AI validation
-  // completed with no suggestions (backend allows this path as well).
   const canSupervisorConfirm = !!form && form.formStatus !== 'CONFIRMED' && form.formStatus !== 'ARCHIVED' && (
     (form.formStatus === 'PENDING_CONFIRMATION' && (!isLettreSommation || infractionSaved)) ||
     (validation && validation.status === 'COMPLETED' && (validation.suggestions?.length || 0) === 0)
@@ -78,54 +73,53 @@ export default function FormDetailPage() {
       api.patch(`/suggestions/${suggestionId}/decide`, { decision, overrideValue }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries(['validation', id])
-      toast.success(`Suggestion ${variables.decision.toLowerCase()}`)
+      toast.success(`${t('formDetail.suggestion')} ${t(`formDetail.decisionStatus.${variables.decision}`).toLowerCase()}`)
     },
-    onError: () => toast.error('Failed to save decision')
+    onError: () => toast.error(t('formDetail.decisionFailed'))
   })
 
   const confirmMutation = useMutation({
     mutationFn: () => formService.confirmForm(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['form', id])
-      toast.success('Form confirmed successfully!')
+      toast.success(t('formDetail.confirmSuccess'))
     },
-    onError: () => toast.error('Failed to confirm form')
+    onError: () => toast.error(t('formDetail.confirmFailed'))
   })
 
   const archiveMutation = useMutation({
     mutationFn: () => formService.archiveForm(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['form', id])
-      toast.success('Form archived!')
+      toast.success(t('formDetail.archiveSuccess'))
       navigate('/forms')
     },
-    onError: () => toast.error('Failed to archive form')
+    onError: () => toast.error(t('formDetail.archiveFailed'))
   })
 
   const infractionMutation = useMutation({
     mutationFn: (data) => api.patch(`/forms/${id}/infraction-status`, data),
     onSuccess: () => {
       setInfractionSaved(true)
-      toast.success('Infraction status saved!')
+      toast.success(t('formDetail.infractionSaved'))
       queryClient.invalidateQueries(['fields', id])
     },
-    onError: () => toast.error('Failed to save infraction status')
+    onError: () => toast.error(t('formDetail.infractionFailed'))
   })
 
   const validateMutation = useMutation({
     mutationFn: () => formService.triggerValidation(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['form', id])
-      toast.success('Form validated. The supervisor has been notified.')
+      toast.success(t('formDetail.validateSuccess'))
     },
-    onError: () => toast.error('Failed to validate form')
+    onError: () => toast.error(t('formDetail.validateFailed'))
   })
 
   const enterEditMode = () => {
     const values = {}
     mergedFields.forEach(f => { values[f.fieldName] = f.extractedValue || '' })
     extraFields.forEach(f => { values[f.fieldName] = f.extractedValue || '' })
-    // Seed infraction fields from confirmed values
     const infractionFieldNames = ['statut', 'gare_reglement', 'montant_regle', 'num_pp']
     infractionFieldNames.forEach(name => {
       const field = fields?.find(f => f.fieldName === name)
@@ -142,11 +136,11 @@ export default function FormDetailPage() {
       setEditMode(false)
       toast.success(
         user?.role === 'MANAGER'
-          ? 'Fields updated. The supervisor has been notified.'
-          : 'Fields updated successfully!'
+          ? t('formDetail.fieldsUpdatedManager')
+          : t('formDetail.fieldsUpdated')
       )
     },
-    onError: () => toast.error('Failed to update fields')
+    onError: () => toast.error(t('formDetail.fieldsUpdateFailed'))
   })
 
   const handleSaveFields = () => {
@@ -168,9 +162,9 @@ export default function FormDetailPage() {
       queryClient.invalidateQueries(['fields', id])
       setShowAddField(false)
       setNewField({ fieldName: '', extractedValue: '' })
-      toast.success('Field added successfully')
+      toast.success(t('formDetail.fieldAdded'))
     },
-    onError: () => toast.error('Failed to add field')
+    onError: () => toast.error(t('formDetail.fieldAddFailed'))
   })
 
   const decisionColors = {
@@ -180,16 +174,8 @@ export default function FormDetailPage() {
     OVERRIDDEN: 'bg-purple-100 text-purple-700',
   }
 
-  const fieldStatusColors = {
-    PENDING: 'text-yellow-600',
-    ACCEPTED: 'text-green-600',
-    OVERRIDDEN: 'text-purple-600',
-    REJECTED: 'text-red-600',
-  }
-
   const infractionFieldNames = ['statut', 'gare_reglement', 'montant_regle', 'num_pp']
 
-  // Merge schema with extracted fields
   const mergedFields = schema?.map(schemaField => {
     const extracted = fields?.find(f => f.fieldName === schemaField.fieldName)
     return {
@@ -201,7 +187,6 @@ export default function FormDetailPage() {
     }
   }).filter(f => !infractionFieldNames.includes(f.fieldName)) || []
 
-  // Extra fields not in schema
   const extraFields = fields?.filter(f =>
     !schema?.find(s => s.fieldName === f.fieldName) &&
     !infractionFieldNames.includes(f.fieldName)
@@ -229,7 +214,7 @@ export default function FormDetailPage() {
           className="flex items-center gap-2 text-gray-500 hover:text-gray-800 text-sm"
         >
           <ArrowLeft size={16} />
-          Back to Forms
+          {t('formDetail.backToForms')}
         </button>
         
         {/* Actions */}
@@ -242,7 +227,7 @@ export default function FormDetailPage() {
                          hover:bg-gray-50 transition"
             >
               <Archive size={16} />
-              Archive
+              {t('formDetail.archive')}
             </button>
           </div>
         )}
@@ -263,7 +248,7 @@ export default function FormDetailPage() {
               ) : (
                 <CheckCircle size={16} />
               )}
-              {validateMutation.isPending ? 'Validating...' : 'Validate Form'}
+              {validateMutation.isPending ? t('formDetail.validating') : t('formDetail.validateForm')}
             </button>
             <button
               onClick={() => setShowArchiveConfirm(true)}
@@ -272,7 +257,7 @@ export default function FormDetailPage() {
                          hover:bg-gray-50 transition"
             >
               <Archive size={16} />
-              Archive
+              {t('formDetail.archive')}
             </button>
           </div>
         )}
@@ -289,10 +274,10 @@ export default function FormDetailPage() {
               </div>
               <div>
                 <h2 className="font-semibold text-gray-900">
-                  {form.formType.replace(/_/g, ' ')}
+                  {t(`forms.types.${form.formType}`) || form.formType.replace(/_/g, ' ')}
                 </h2>
                 <p className="text-xs text-gray-500">
-                  Form ID: {form.id?.substring(0, 8)}...
+                  {t('formDetail.formId')}: {form.id?.substring(0, 8)}...
                 </p>
               </div>
             </div>
@@ -300,23 +285,23 @@ export default function FormDetailPage() {
               ${form.formStatus === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
                 form.formStatus === 'ARCHIVED' ? 'bg-gray-100 text-gray-600' :
                 'bg-orange-100 text-orange-700'}`}>
-              {form.formStatus?.replace(/_/g, ' ')}
+              {t(`forms.statuses.${form.formStatus}`) || form.formStatus?.replace(/_/g, ' ')}
             </span>
           </div>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
-              <p className="text-gray-500">Uploaded by</p>
+              <p className="text-gray-500">{t('formDetail.uploadedBy')}</p>
               <p className="font-medium">{form.uploadedBy?.fullName}</p>
             </div>
             <div>
-              <p className="text-gray-500">Date</p>
+              <p className="text-gray-500">{t('common.date')}</p>
               <p className="font-medium">
                 {new Date(form.uploadedAt).toLocaleDateString('fr-MA')}
               </p>
             </div>
             <div>
               <p className="text-gray-500">
-                {form.validatedByManager ? 'Validated by' : 'Confirmed by'}
+                {form.validatedByManager ? t('formDetail.validatedBy') : t('formDetail.confirmedBy')}
               </p>
               <p className="font-medium">
                 {(form.validatedByManager ? form.validatedByManagerBy?.fullName : form.confirmedBy?.fullName) || '—'}
@@ -328,15 +313,11 @@ export default function FormDetailPage() {
 
       {isManager && form && !canManagerAct && form.formStatus !== 'ARCHIVED' && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Edit, validate, and archive are available after the supervisor confirms this form.
+          {t('formDetail.managerWaitMessage')}
         </div>
       )}
 
-      {user?.role === 'FIELD_SUPERVISOR' && form && form.formStatus === 'CONFIRMED' && (
-        <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          This form has been validated by the manager and is now locked. You cannot make further edits.
-        </div>
-      )}
+    
 
       {user?.role === 'FIELD_SUPERVISOR' && form && (
         <div className="mb-6 flex items-center gap-3">
@@ -349,36 +330,36 @@ export default function FormDetailPage() {
               style={{ backgroundColor: '#E8500A' }}
             >
               <CheckCircle size={16} />
-              {confirmMutation.isPending ? 'Confirming...' : 'Confirm Form'}
+              {confirmMutation.isPending ? t('formDetail.confirming') : t('formDetail.confirmForm')}
             </button>
           ) : form.formStatus === 'CONFIRMED' && isFormValidatedByManager ? (
             <div className="inline-flex items-center gap-2 rounded-lg bg-green-50 px-4 py-2 text-sm font-medium text-green-700">
               <CheckCircle size={16} />
-              Form validated by manager (locked)
+              {t('formDetail.formValidatedLocked')}
             </div>
           ) : form.formStatus === 'CONFIRMED' ? (
             <div className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
               <CheckCircle size={16} />
-              Form confirmed - waiting for manager validation
+              {t('formDetail.formConfirmedWaiting')}
             </div>
           ) : form.formStatus !== 'ARCHIVED' && (
             <div className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-500">
               <CheckCircle size={16} />
               {form.formStatus === 'PENDING_CONFIRMATION' && isLettreSommation && !infractionSaved
-                ? 'Save infraction status before confirming'
-                : 'Confirm available after AI validation'}
+                ? t('formDetail.saveInfractionFirst')
+                : t('formDetail.confirmAfterValidation')}
             </div>
           )}
         </div>
       )}
 
-      {/* Tabs — supervisors only; managers edit fields directly */}
+      {/* Tabs */}
       {user?.role !== 'MANAGER' && (
       <div className="flex gap-1 mb-6 bg-white rounded-lg p-1 shadow-sm
                       border w-fit">
         {[
-          { id: 'fields', label: 'Form Fields', icon: <ClipboardList size={15} /> },
-          ...(showValidationTab ? [{ id: 'validation', label: 'AI Validation', icon: <CheckCircle size={15} /> }] : [])
+          { id: 'fields', label: t('formDetail.formFields'), icon: <ClipboardList size={15} /> },
+          ...(showValidationTab ? [{ id: 'validation', label: t('formDetail.aiValidation'), icon: <CheckCircle size={15} /> }] : [])
         ].map(tab => (
           <button
             key={tab.id}
@@ -403,7 +384,7 @@ export default function FormDetailPage() {
       {(activeTab === 'fields' || user?.role === 'MANAGER') && (
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="font-semibold text-gray-800">Extracted Fields</h3>
+            <h3 className="font-semibold text-gray-800">{t('formDetail.extractedFields')}</h3>
             <div className="flex items-center gap-2">
               {!editMode && canEditFields && (
                 <>
@@ -415,7 +396,7 @@ export default function FormDetailPage() {
                     style={{ borderColor: '#E8500A', color: '#E8500A' }}
                   >
                     <Edit3 size={14} />
-                    Edit Fields
+                    {t('formDetail.editFields')}
                   </button>
                   )}
                   {user?.role === 'FIELD_SUPERVISOR' && form?.formStatus !== 'CONFIRMED' && (
@@ -426,7 +407,7 @@ export default function FormDetailPage() {
                     style={{ backgroundColor: '#E8500A' }}
                   >
                     <Plus size={14} />
-                    Add Field
+                    {t('formDetail.addField')}
                   </button>
                   )}
                 </>
@@ -440,7 +421,7 @@ export default function FormDetailPage() {
                                hover:bg-gray-50 transition"
                   >
                     <X size={14} />
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     onClick={handleSaveFields}
@@ -450,7 +431,7 @@ export default function FormDetailPage() {
                     style={{ backgroundColor: '#E8500A' }}
                   >
                     <CheckCircle size={14} />
-                    {updateFieldsMutation.isPending ? 'Saving...' : 'Save Changes'}
+                    {updateFieldsMutation.isPending ? t('formDetail.saving') : t('formDetail.saveChanges')}
                   </button>
                 </>
               )}
@@ -460,7 +441,7 @@ export default function FormDetailPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {['Field', 'Extracted Value', 'Confirmed Value', 'Status'].map(h => (
+                {[t('formDetail.field'), t('formDetail.extractedValue'), t('formDetail.confirmedValue')].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-medium
                                          text-gray-500 uppercase">
                     {h}
@@ -496,7 +477,7 @@ export default function FormDetailPage() {
                           {field.extractedValue}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-400 italic">Not extracted</span>
+                        <span className="text-xs text-gray-400 italic">{t('formDetail.notExtracted')}</span>
                       )
                     )}
                    </td>
@@ -505,15 +486,6 @@ export default function FormDetailPage() {
                       <span className="text-sm font-mono bg-green-50 px-2 py-0.5
                                        rounded text-green-700">
                         {field.confirmedValue}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                   </td>
-                  <td className="px-4 py-3">
-                    {field.status ? (
-                      <span className={`text-xs font-medium ${fieldStatusColors[field.status]}`}>
-                        {field.status}
                       </span>
                     ) : (
                       <span className="text-xs text-gray-400">—</span>
@@ -528,7 +500,7 @@ export default function FormDetailPage() {
                       <p className="text-sm font-medium text-gray-900">
                         {field.fieldName}
                       </p>
-                      <p className="text-xs text-blue-400">Extra field</p>
+                      <p className="text-xs text-blue-400">{t('formDetail.extraField')}</p>
                     </div>
                    </td>
                   <td className="px-4 py-3">
@@ -539,37 +511,31 @@ export default function FormDetailPage() {
                   <td className="px-4 py-3">
                     {field.confirmedValue || <span className="text-xs text-gray-400">—</span>}
                    </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-medium ${fieldStatusColors[field.status]}`}>
-                      {field.status}
-                    </span>
-                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          {/* Infraction Status Summary — show after confirmation for Lettre Sommation */}
+          {/* Infraction Status Summary */}
           {isLettreSommation &&
            (form?.formStatus === 'CONFIRMED' || form?.formStatus === 'ARCHIVED') && (
             <div className="border-t mt-2 p-4">
               <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: '#E8500A' }} />
-                Statut de l'infraction
+                {t('formDetail.infractionStatus')}
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { label: 'Statut', fieldName: 'statut' },
-                  { label: 'Gare de Réglement', fieldName: 'gare_reglement' },
-                  { label: 'N° PP', fieldName: 'num_pp' },
-                  ...(isBillet ? [{ label: 'Montant Réglé', fieldName: 'montant_regle' }] : [])
+                  { label: t('formDetail.statut'), fieldName: 'statut' },
+                  { label: t('formDetail.gareReglement'), fieldName: 'gare_reglement' },
+                  { label: t('formDetail.numPP'), fieldName: 'num_pp' },
+                  ...(isBillet ? [{ label: t('formDetail.montantRegle'), fieldName: 'montant_regle' }] : [])
                 ].map(item => {
                   const value = fields?.find(f => f.fieldName === item.fieldName)?.confirmedValue
                   const currentStatut = editMode
                     ? (editValues['statut'] ?? fields?.find(f => f.fieldName === 'statut')?.confirmedValue)
                     : fields?.find(f => f.fieldName === 'statut')?.confirmedValue
-                  // Hide gare/num_pp/montant when NON_REGULARISEE
                   if (item.fieldName !== 'statut' && currentStatut === 'NON_REGULARISEE') return null
                   return (
                     <div key={item.fieldName} className="bg-gray-50 rounded-lg p-3">
@@ -581,9 +547,9 @@ export default function FormDetailPage() {
                             onChange={(e) => setEditValues({ ...editValues, [item.fieldName]: e.target.value })}
                             className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1"
                           >
-                            <option value="">Sélectionner...</option>
-                            <option value="REGULARISEE">✅ Régularisée</option>
-                            <option value="NON_REGULARISEE">❌ Non Régularisée</option>
+                            <option value="">{t('formDetail.select')}</option>
+                            <option value="REGULARISEE">✅ {t('formDetail.regularisee')}</option>
+                            <option value="NON_REGULARISEE">❌ {t('formDetail.nonRegularisee')}</option>
                           </select>
                         ) : item.fieldName === 'gare_reglement' ? (
                           <select
@@ -591,7 +557,7 @@ export default function FormDetailPage() {
                             onChange={(e) => setEditValues({ ...editValues, [item.fieldName]: e.target.value })}
                             className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1"
                           >
-                            <option value="">Sélectionner une gare...</option>
+                            <option value="">{t('formDetail.selectGare')}</option>
                             {['KENITRA', 'SALE TABRIQUET', 'RABAT VILLE', 'RABAT AGDAL',
                               'CASABLANCA VOYAGEURS', 'CASA PORT', 'MOHAMMEDIA', 'TEMARA',
                               'SETTAT', 'MEKNES VILLE', 'FES', 'TANGER VILLE', 'MARRAKECH',
@@ -630,11 +596,11 @@ export default function FormDetailPage() {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex
                             items-center justify-center z-50">
               <div className="bg-white rounded-xl p-6 w-full max-w-md">
-                <h3 className="font-semibold mb-4">Add Missing Field</h3>
+                <h3 className="font-semibold mb-4">{t('formDetail.addMissingField')}</h3>
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Field Name
+                      {t('formDetail.fieldName')}
                     </label>
                     <select
                       value={newField.fieldName}
@@ -642,7 +608,7 @@ export default function FormDetailPage() {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2
                                  focus:outline-none focus:ring-2 text-sm"
                     >
-                      <option value="">Select field...</option>
+                      <option value="">{t('formDetail.selectField')}</option>
                       {schema?.filter(s =>
                         !fields?.find(f => f.fieldName === s.fieldName)
                       ).map(s => (
@@ -654,7 +620,7 @@ export default function FormDetailPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Value
+                      {t('formDetail.value')}
                     </label>
                     <input
                       type="text"
@@ -662,7 +628,7 @@ export default function FormDetailPage() {
                       onChange={(e) => setNewField({...newField, extractedValue: e.target.value})}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2
                                  focus:outline-none focus:ring-2 text-sm"
-                      placeholder="Enter value..."
+                      placeholder={t('formDetail.enterValue')}
                     />
                   </div>
                   <div className="flex gap-2 pt-2">
@@ -671,7 +637,7 @@ export default function FormDetailPage() {
                       className="flex-1 border border-gray-300 text-gray-700
                                  py-2 rounded-lg text-sm hover:bg-gray-50"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={() => addFieldMutation.mutate(newField)}
@@ -680,7 +646,7 @@ export default function FormDetailPage() {
                                  disabled:opacity-50 transition"
                       style={{ backgroundColor: '#E8500A' }}
                     >
-                      Add Field
+                      {t('formDetail.addField')}
                     </button>
                   </div>
                 </div>
@@ -690,14 +656,14 @@ export default function FormDetailPage() {
         </div>
       )}
 
-      {/* Validation Tab — supervisors only */}
+      {/* Validation Tab */}
       {activeTab === 'validation' && user?.role !== 'MANAGER' && showValidationTab && (
         <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="font-semibold mb-4">AI Validation Results</h3>
+          <h3 className="font-semibold mb-4">{t('formDetail.aiValidationResults')}</h3>
           {validationLoading ? (
-            <p className="text-gray-500">Loading...</p>
+            <p className="text-gray-500">{t('common.loading')}</p>
           ) : !validation ? (
-            <p className="text-gray-500">No validation found.</p>
+            <p className="text-gray-500">{t('formDetail.noValidation')}</p>
           ) : (
             <>
               <div className="flex items-center gap-3 mb-6">
@@ -705,17 +671,17 @@ export default function FormDetailPage() {
                   ${validation.status === 'COMPLETED'
                     ? 'bg-green-100 text-green-700'
                     : 'bg-yellow-100 text-yellow-700'}`}>
-                  {validation.status}
+                  {t(`formDetail.validationStatus.${validation.status}`) || validation.status}
                 </span>
                 <span className="text-sm text-gray-500">
-                  {validation.suggestions?.length || 0} suggestion(s)
+                  {validation.suggestions?.length || 0} {t('formDetail.suggestions')}
                 </span>
               </div>
 
               {validation.suggestions?.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <CheckCircle size={40} className="mx-auto text-green-400 mb-2" />
-                  <p>No errors found — form looks good!</p>
+                  <p>{t('formDetail.noErrors')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -727,25 +693,25 @@ export default function FormDetailPage() {
                             {suggestion.fieldName}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
-                            Extracted: <span className="font-mono bg-gray-100 px-1 rounded">
+                            {t('formDetail.extracted')}: <span className="font-mono bg-gray-100 px-1 rounded">
                               {suggestion.extractedValue || '—'}
                             </span>
                           </p>
                           {suggestion.suggestedValue && (
                             <p className="text-sm mt-1" style={{ color: '#E8500A' }}>
-                              Suggested: <span className="font-mono bg-orange-50 px-1 rounded">
+                              {t('formDetail.suggested')}: <span className="font-mono bg-orange-50 px-1 rounded">
                                 {suggestion.suggestedValue}
                               </span>
                             </p>
                           )}
                           <p className="text-xs text-gray-400 mt-1">{suggestion.reason}</p>
                           <p className="text-xs text-gray-400">
-                            Confidence: {Math.round(suggestion.confidence * 100)}%
+                            {t('formDetail.confidence')}: {Math.round(suggestion.confidence * 100)}%
                           </p>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium
                                          ${decisionColors[suggestion.decision]}`}>
-                          {suggestion.decision}
+                          {t(`formDetail.decisionStatus.${suggestion.decision}`) || suggestion.decision}
                         </span>
                       </div>
 
@@ -759,7 +725,7 @@ export default function FormDetailPage() {
                             className="flex items-center gap-1 px-3 py-1 bg-green-50
                                        text-green-700 rounded hover:bg-green-100 text-sm"
                           >
-                            <CheckCircle size={14} /> Accept
+                            <CheckCircle size={14} /> {t('formDetail.accept')}
                           </button>
                           <button
                             onClick={() => setShowDecisionConfirm({
@@ -769,12 +735,12 @@ export default function FormDetailPage() {
                             className="flex items-center gap-1 px-3 py-1 bg-red-50
                                        text-red-700 rounded hover:bg-red-100 text-sm"
                           >
-                            <XCircle size={14} /> Reject
+                            <XCircle size={14} /> {t('formDetail.reject')}
                           </button>
                           <div className="flex items-center gap-1 flex-1">
                             <input
                               type="text"
-                              placeholder="Override value..."
+                              placeholder={t('formDetail.overrideValue')}
                               value={overrideValues[suggestion.id] || ''}
                               onChange={(e) => setOverrideValues({
                                 ...overrideValues,
@@ -793,7 +759,7 @@ export default function FormDetailPage() {
                               className="flex items-center gap-1 px-3 py-1 bg-purple-50
                                          text-purple-700 rounded text-sm disabled:opacity-50"
                             >
-                              <Edit3 size={14} /> Override
+                              <Edit3 size={14} /> {t('formDetail.override')}
                             </button>
                           </div>
                         </div>
@@ -807,14 +773,14 @@ export default function FormDetailPage() {
         </div>
       )}
 
-      {/* Infraction Status Section — only for Lettre Sommation forms on validation tab */}
+      {/* Infraction Status Section */}
       {isLettreSommation &&
        activeTab === 'validation' &&
        form?.formStatus !== 'ARCHIVED' &&
        form?.formStatus !== 'CONFIRMED' && (
         <div className="bg-white rounded-xl shadow-sm border p-6 mt-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-800">Statut de l'infraction</h3>
+            <h3 className="font-semibold text-gray-800">{t('formDetail.infractionStatus')}</h3>
             {infractionSaved && form?.formStatus !== 'CONFIRMED' && (
               <button
                 onClick={() => {
@@ -824,7 +790,7 @@ export default function FormDetailPage() {
                 className="text-sm flex items-center gap-1"
                 style={{ color: '#E8500A' }}
               >
-                <Edit3 size={14} /> Modify
+                <Edit3 size={14} /> {t('formDetail.modify')}
               </button>
             )}
           </div>
@@ -832,26 +798,26 @@ export default function FormDetailPage() {
           {infractionSaved ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-400 mb-1">Statut</p>
+                <p className="text-xs text-gray-400 mb-1">{t('formDetail.statut')}</p>
                 <p className={`text-sm font-medium ${
                   infractionStatus === 'REGULARISEE' ? 'text-green-600' : 'text-red-600'
                 }`}>
-                  {infractionStatus === 'REGULARISEE' ? '✅ Régularisée' : '❌ Non Régularisée'}
+                  {infractionStatus === 'REGULARISEE' ? `✅ ${t('formDetail.regularisee')}` : `❌ ${t('formDetail.nonRegularisee')}`}
                 </p>
               </div>
               {infractionStatus === 'REGULARISEE' && (
                 <>
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-400 mb-1">Gare de Réglement</p>
+                    <p className="text-xs text-gray-400 mb-1">{t('formDetail.gareReglement')}</p>
                     <p className="text-sm font-medium">{gareReglement}</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-400 mb-1">N° PP</p>
+                    <p className="text-xs text-gray-400 mb-1">{t('formDetail.numPP')}</p>
                     <p className="text-sm font-medium">{numPP}</p>
                   </div>
                   {isBillet && (
                     <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-400 mb-1">Montant Réglé</p>
+                      <p className="text-xs text-gray-400 mb-1">{t('formDetail.montantRegle')}</p>
                       <p className="text-sm font-medium">{montantRegle} MAD</p>
                     </div>
                   )}
@@ -860,7 +826,6 @@ export default function FormDetailPage() {
             </div>
           ) : (
             <>
-              {/* Status selection */}
               <div className="flex gap-3 mb-4">
                 {['REGULARISEE', 'NON_REGULARISEE'].map(status => (
                   <button
@@ -875,17 +840,16 @@ export default function FormDetailPage() {
                                  ? 'border-orange-500 bg-orange-50 text-orange-700'
                                  : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
                   >
-                    {status === 'REGULARISEE' ? '✅ Régularisée' : '❌ Non Régularisée'}
+                    {status === 'REGULARISEE' ? `✅ ${t('formDetail.regularisee')}` : `❌ ${t('formDetail.nonRegularisee')}`}
                   </button>
                 ))}
               </div>
 
-              {/* Extra fields if Régularisée */}
               {infractionStatus === 'REGULARISEE' && (
                 <div className="space-y-3 mb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Gare de Réglement
+                      {t('formDetail.gareReglement')}
                     </label>
                     <select
                       value={gareReglement}
@@ -893,7 +857,7 @@ export default function FormDetailPage() {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2
                                  text-sm focus:outline-none focus:ring-1"
                     >
-                      <option value="">Sélectionner une gare...</option>
+                      <option value="">{t('formDetail.selectGare')}</option>
                       {['KENITRA', 'SALE TABRIQUET', 'RABAT VILLE', 'RABAT AGDAL',
                         'CASABLANCA VOYAGEURS', 'CASA PORT', 'MOHAMMEDIA', 'TEMARA',
                         'SETTAT', 'MEKNES VILLE', 'FES', 'TANGER VILLE', 'MARRAKECH',
@@ -905,13 +869,13 @@ export default function FormDetailPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      N° PP de Régularisation
+                      {t('formDetail.numPPRegularisation')}
                     </label>
                     <input
                       type="text"
                       value={numPP}
                       onChange={(e) => setNumPP(e.target.value)}
-                      placeholder="Ex: PP-2026-001"
+                      placeholder={t('formDetail.numPPPlaceholder')}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2
                                  text-sm focus:outline-none focus:ring-1"
                     />
@@ -920,13 +884,13 @@ export default function FormDetailPage() {
                   {isBillet && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Montant Réglé (MAD)
+                        {t('formDetail.montantRegleMAD')}
                       </label>
                       <input
                         type="number"
                         value={montantRegle}
                         onChange={(e) => setMontantRegle(e.target.value)}
-                        placeholder="Ex: 150"
+                        placeholder={t('formDetail.montantPlaceholder')}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2
                                    text-sm focus:outline-none focus:ring-1"
                       />
@@ -935,7 +899,6 @@ export default function FormDetailPage() {
                 </div>
               )}
 
-              {/* Save button */}
               {infractionStatus && (
                 <button
                   onClick={() => infractionMutation.mutate({
@@ -949,7 +912,7 @@ export default function FormDetailPage() {
                              transition disabled:opacity-50"
                   style={{ backgroundColor: '#E8500A' }}
                 >
-                  {infractionMutation.isPending ? 'Saving...' : 'Save Infraction Status'}
+                  {infractionMutation.isPending ? t('formDetail.saving') : t('formDetail.saveInfractionStatus')}
                 </button>
               )}
             </>
@@ -960,9 +923,9 @@ export default function FormDetailPage() {
       {/* Decision Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!showDecisionConfirm}
-        title={`${showDecisionConfirm?.decision} Suggestion`}
-        message={`Are you sure you want to ${showDecisionConfirm?.decision?.toLowerCase()} this suggestion?`}
-        confirmLabel={showDecisionConfirm?.decision}
+        title={`${t(`formDetail.decisionStatus.${showDecisionConfirm?.decision}`)} ${t('formDetail.suggestion')}`}
+        message={t('formDetail.decisionConfirmMessage', { decision: t(`formDetail.decisionStatus.${showDecisionConfirm?.decision}`).toLowerCase() })}
+        confirmLabel={t(`formDetail.decisionStatus.${showDecisionConfirm?.decision}`)}
         danger={showDecisionConfirm?.decision === 'REJECTED'}
         onConfirm={() => {
           decideMutation.mutate({
@@ -977,9 +940,9 @@ export default function FormDetailPage() {
       {/* Confirm Form Dialog */}
       <ConfirmDialog
         isOpen={showConfirmFormDialog}
-        title="Confirm Form"
-        message="Are you sure you want to confirm this form? This action cannot be undone."
-        confirmLabel="Yes, Confirm"
+        title={t('formDetail.confirmForm')}
+        message={t('formDetail.confirmFormMessage')}
+        confirmLabel={t('formDetail.yesConfirm')}
         onConfirm={() => {
           confirmMutation.mutate()
           setShowConfirmFormDialog(false)
@@ -990,9 +953,9 @@ export default function FormDetailPage() {
       {/* Archive Form Dialog */}
       <ConfirmDialog
         isOpen={showArchiveConfirm}
-        title="Archive Form"
-        message="Are you sure you want to archive this form?"
-        confirmLabel="Archive"
+        title={t('formDetail.archiveForm')}
+        message={t('formDetail.archiveFormMessage')}
+        confirmLabel={t('formDetail.archive')}
         danger={true}
         onConfirm={() => {
           archiveMutation.mutate()
