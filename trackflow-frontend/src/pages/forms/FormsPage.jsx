@@ -114,6 +114,23 @@ const [filters, setFilters] = useState({
     ARCHIVED: 'bg-gray-100 text-gray-600',
   }
 
+  // Changed display names: CONFIRMED -> VALIDATED, PENDING_CONFIRMATION -> PENDING VALIDATION
+  const statusDisplayNames = {
+    UPLOADED: 'Uploaded',
+    OCR_PROCESSING: 'OCR Processing',
+    PENDING_VALIDATION: 'Pending Validation',
+    PENDING_CONFIRMATION: 'Pending Validation',
+    CONFIRMED: 'Validated',
+    ARCHIVED: 'Archived',
+  }
+
+  // Changed display names for form types
+  const formTypeDisplayNames = {
+    RAPPORT_M: 'Rapport M',
+    LETTRE_SOMMATION_BILLET: 'Sommation Billet',
+    LETTRE_SOMMATION_CARTE: 'Sommation Carte',
+  }
+
   const forms = data?.content || []
   const totalPages = data?.totalPages || 0
   const totalElements = data?.totalElements || 0
@@ -206,8 +223,8 @@ const [filters, setFilters] = useState({
                 <option value="">All Statuses</option>
                 <option value="UPLOADED">Uploaded</option>
                 <option value="PENDING_VALIDATION">Pending Validation</option>
-                <option value="PENDING_CONFIRMATION">Pending Confirmation</option>
-                <option value="CONFIRMED">Confirmed</option>
+                <option value="PENDING_CONFIRMATION">Pending Validation</option>
+                <option value="CONFIRMED">Validated</option>
                 <option value="ARCHIVED">Archived</option>
               </select>
 
@@ -273,22 +290,39 @@ const [filters, setFilters] = useState({
                   Scan File
                 </label>
                 <div
-                  className="border-2 border-dashed border-gray-300 rounded-lg
-                             p-6 text-center cursor-pointer hover:border-orange-400
-                             transition"
-                  onClick={() => document.getElementById('fileInput').click()}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition
+                             ${uploadMutation.isPending
+                               ? 'border-orange-400 bg-orange-50 cursor-wait'
+                               : 'border-gray-300 cursor-pointer hover:border-orange-400'}`}
+                  onClick={() => !uploadMutation.isPending && document.getElementById('fileInput').click()}
                 >
-                  <Upload size={24} className="mx-auto text-gray-400 mb-2" />
-                  {file
-                    ? <p className="text-sm text-green-600 font-medium">{file.name}</p>
-                    : <p className="text-sm text-gray-500">Click to select PDF or image</p>
-                  }
+                  {uploadMutation.isPending ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="relative flex h-4 w-4">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+                        <span className="relative inline-flex h-4 w-4 rounded-full bg-orange-500" />
+                      </span>
+                      <p className="text-sm font-medium text-orange-700">Uploading file...</p>
+                      {file && (
+                        <p className="text-xs text-orange-600">{file.name}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <Upload size={24} className="mx-auto text-gray-400 mb-2" />
+                      {file
+                        ? <p className="text-sm text-green-600 font-medium">{file.name}</p>
+                        : <p className="text-sm text-gray-500">Click to select PDF or image</p>
+                      }
+                    </>
+                  )}
                 </div>
                 <input
                   id="fileInput"
                   type="file"
                   accept=".pdf,.png,.jpg,.jpeg"
                   className="hidden"
+                  disabled={uploadMutation.isPending}
                   onChange={(e) => setFile(e.target.files[0])}
                 />
               </div>
@@ -296,9 +330,15 @@ const [filters, setFilters] = useState({
                 type="submit"
                 disabled={!file || uploadMutation.isPending}
                 className="w-full text-white py-2.5 rounded-lg font-medium
-                           transition disabled:opacity-50"
+                           transition disabled:opacity-50 flex items-center justify-center gap-2"
                 style={{ backgroundColor: '#E8500A' }}
               >
+                {uploadMutation.isPending && (
+                  <span className="relative flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
+                  </span>
+                )}
                 {uploadMutation.isPending ? 'Uploading...' : 'Upload Form'}
               </button>
             </form>
@@ -334,12 +374,12 @@ const [filters, setFilters] = useState({
               {forms.map(form => (
                 <tr key={form.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {form.formType.replace(/_/g, ' ')}
+                    {formTypeDisplayNames[form.formType] || form.formType.replace(/_/g, ' ')}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium
                                      ${statusColors[form.formStatus]}`}>
-                      {form.formStatus.replace(/_/g, ' ')}
+                      {statusDisplayNames[form.formStatus] || form.formStatus.replace(/_/g, ' ')}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">

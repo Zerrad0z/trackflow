@@ -17,6 +17,7 @@ export const formService = {
   params,
   responseType: 'blob'
 }),
-updateFields: (id, updates) => api.patch(`/forms/${id}/fields/bulk`, updates),
-updateInfractionStatus: (id, data) => api.patch(`/forms/${id}/infraction-status`, data),
+  updateFields: (id, updates) => api.patch(`/forms/${id}/fields/bulk`, updates),
+  updateInfractionStatus: (id, data) => api.patch(`/forms/${id}/infraction-status`, data),
+  triggerValidation: (id) => api.post(`/forms/${id}/validations`),
 }
