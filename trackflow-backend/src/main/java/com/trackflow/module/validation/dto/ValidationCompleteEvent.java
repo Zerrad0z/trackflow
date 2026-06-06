@@ -10,5 +10,6 @@ public record ValidationCompleteEvent(
         UUID uploadedById,
         String formType,
         ValidationStatus status,
-        int suggestionCount
+        int suggestionCount,
+        UUID triggeredByUserId
 ) {}

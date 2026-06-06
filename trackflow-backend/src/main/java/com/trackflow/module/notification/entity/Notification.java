@@ -23,6 +23,14 @@ public class Notification {
 
     private String message;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "notification_type")
+    private NotificationType notificationType;
+
+    @Column(name = "reference_id")
+    private UUID referenceId;
+
     @Column(nullable = false)
     private Boolean isRead = false;
 

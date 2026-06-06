@@ -9,6 +9,7 @@ import com.trackflow.module.report.entity.Report;
 import com.trackflow.module.report.repository.ReportRepository;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;
@@ -18,6 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -42,6 +45,9 @@ public class ReportServiceImpl implements ReportService {
         User currentUser = getCurrentUser();
         boolean isSupervisor = currentUser.getRole() == UserRole.FIELD_SUPERVISOR;
 
+        // Get language from request header
+        String lang = getCurrentLanguage();
+
         // Determine date range
         LocalDateTime from = resolveFromDate(request);
         LocalDateTime to = LocalDateTime.now();
@@ -61,7 +67,7 @@ public class ReportServiceImpl implements ReportService {
 
         String filePath = request.format().equalsIgnoreCase("PDF")
                 ? pdfReportService.generateFormReport(forms, title)
-                : excelReportService.generateFormReport(forms, title);
+                : excelReportService.generateFormReport(forms, title, lang);
 
         Report report = Report.builder()
                 .generatedBy(currentUser)
@@ -95,6 +101,20 @@ public class ReportServiceImpl implements ReportService {
             throw new ResourceNotFoundException("Report file not found");
         }
         return resource;
+    }
+
+    private String getCurrentLanguage() {
+        try {
+            ServletRequestAttributes attrs = (ServletRequestAttributes)
+                    RequestContextHolder.getRequestAttributes();
+            if (attrs != null) {
+                String lang = attrs.getRequest().getHeader("Accept-Language");
+                return lang != null ? lang : "fr";
+            }
+        } catch (Exception e) {
+            log.warn("Could not get language header, defaulting to fr");
+        }
+        return "fr";
     }
 
     private LocalDateTime resolveFromDate(ReportRequest request) {
