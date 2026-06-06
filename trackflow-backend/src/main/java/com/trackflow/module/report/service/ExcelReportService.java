@@ -26,7 +26,44 @@ public class ExcelReportService {
     @Value("${app.storage.reports-dir}")
     private String reportsDir;
 
+    private static final Map<String, Map<String, String>> translations = Map.of(
+            "fr", Map.ofEntries(
+                    Map.entry("Form ID", "ID Formulaire"),
+                    Map.entry("Type", "Type"),
+                    Map.entry("Status", "Statut"),
+                    Map.entry("Uploaded By", "Téléchargé par"),
+                    Map.entry("Uploaded At", "Téléchargé le"),
+                    Map.entry("Confirmed At", "Confirmé le"),
+                    Map.entry("Confirmed By", "Confirmé par"),
+                    Map.entry("Generated", "Généré"),
+                    Map.entry("Total forms", "Total formulaires"),
+                    Map.entry("forms", "formulaires"),
+                    Map.entry("RAPPORT_M", "Rapport M"),
+                    Map.entry("LETTRE_SOMMATION_BILLET", "Sommation Billet"),
+                    Map.entry("LETTRE_SOMMATION_CARTE", "Sommation Carte"),
+                    Map.entry("UPLOADED", "Téléchargé"),
+                    Map.entry("OCR_PROCESSING", "Traitement OCR"),
+                    Map.entry("PENDING_VALIDATION", "En attente de validation"),
+                    Map.entry("PENDING_CONFIRMATION", "En attente de confirmation"),
+                    Map.entry("CONFIRMED", "Validé"),
+                    Map.entry("ARCHIVED", "Archivé"),
+                    Map.entry("Forms Report", "Rapport des formulaires"),
+                    Map.entry("Detailed Export", "Export détaillé")
+            ),
+            "en", Map.of() // English uses default keys
+    );
+
+    private String t(String key, String lang) {
+        if ("en".equalsIgnoreCase(lang)) return key;
+        Map<String, String> frMap = translations.getOrDefault(lang, Map.of());
+        return frMap.getOrDefault(key, key);
+    }
+
     public String generateFormReport(List<Form> forms, String title) {
+        return generateFormReport(forms, title, "fr");
+    }
+
+    public String generateFormReport(List<Form> forms, String title, String lang) {
         try {
             Path reportsPath = Paths.get(reportsDir);
             if (!Files.exists(reportsPath)) {
@@ -37,7 +74,7 @@ public class ExcelReportService {
             Path filePath = reportsPath.resolve(filename);
 
             Workbook workbook = new XSSFWorkbook();
-            Sheet sheet = workbook.createSheet("Forms Report");
+            Sheet sheet = workbook.createSheet(t("Forms Report", lang));
 
             // Title style
             CellStyle titleStyle = workbook.createCellStyle();
@@ -56,13 +93,13 @@ public class ExcelReportService {
 
             // Title row
             Row titleRow = sheet.createRow(0);
-            org.apache.poi.ss.usermodel.Cell titleCell = titleRow.createCell(0);
+            Cell titleCell = titleRow.createCell(0);
             titleCell.setCellValue(title);
             titleCell.setCellStyle(titleStyle);
 
             // Generated at row
             Row metaRow = sheet.createRow(1);
-            metaRow.createCell(0).setCellValue("Generated: " +
+            metaRow.createCell(0).setCellValue(t("Generated", lang) + ": " +
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
 
             // Empty row
@@ -70,10 +107,16 @@ public class ExcelReportService {
 
             // Header row
             Row headerRow = sheet.createRow(3);
-            String[] headers = {"Form ID", "Type", "Status",
-                    "Uploaded By", "Uploaded At", "Confirmed At"};
+            String[] headers = {
+                    t("Form ID", lang),
+                    t("Type", lang),
+                    t("Status", lang),
+                    t("Uploaded By", lang),
+                    t("Uploaded At", lang),
+                    t("Confirmed At", lang)
+            };
             for (int i = 0; i < headers.length; i++) {
-                org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
             }
@@ -83,8 +126,8 @@ public class ExcelReportService {
             for (Form form : forms) {
                 Row row = sheet.createRow(rowNum++);
                 row.createCell(0).setCellValue(form.getId().toString());
-                row.createCell(1).setCellValue(form.getFormType().name());
-                row.createCell(2).setCellValue(form.getFormStatus().name());
+                row.createCell(1).setCellValue(t(form.getFormType().name(), lang));
+                row.createCell(2).setCellValue(t(form.getFormStatus().name(), lang));
                 row.createCell(3).setCellValue(form.getUploadedBy().getFullName());
                 row.createCell(4).setCellValue(form.getUploadedAt()
                         .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
@@ -95,7 +138,7 @@ public class ExcelReportService {
 
             // Summary row
             Row summaryRow = sheet.createRow(rowNum + 1);
-            summaryRow.createCell(0).setCellValue("Total forms: " + forms.size());
+            summaryRow.createCell(0).setCellValue(t("Total forms", lang) + ": " + forms.size());
 
             // Auto-size columns
             for (int i = 0; i < headers.length; i++) {
@@ -121,6 +164,14 @@ public class ExcelReportService {
             List<Form> forms,
             Map<UUID, List<FormField>> fieldsByForm,
             String title) {
+        return generateDetailedFormReport(forms, fieldsByForm, title, "fr");
+    }
+
+    public String generateDetailedFormReport(
+            List<Form> forms,
+            Map<UUID, List<FormField>> fieldsByForm,
+            String title,
+            String lang) {
         try {
             Path reportsPath = Paths.get(reportsDir);
             if (!Files.exists(reportsPath)) {
@@ -155,21 +206,21 @@ public class ExcelReportService {
                 FormType type = entry.getKey();
                 List<Form> typeForms = entry.getValue();
 
-                Sheet sheet = workbook.createSheet(
-                        type.name().replace("_", " "));
+                Sheet sheet = workbook.createSheet(t(type.name(), lang));
 
                 // Title row
                 Row titleRow = sheet.createRow(0);
-                org.apache.poi.ss.usermodel.Cell titleCell = titleRow.createCell(0);
-                titleCell.setCellValue(title + " — " + type.name());
+                Cell titleCell = titleRow.createCell(0);
+                titleCell.setCellValue(title + " — " + t(type.name(), lang));
                 titleCell.setCellStyle(titleStyle);
 
                 // Meta row
                 Row metaRow = sheet.createRow(1);
                 metaRow.createCell(0).setCellValue(
-                        "Generated: " + LocalDateTime.now()
+                        t("Generated", lang) + ": " + LocalDateTime.now()
                                 .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-                metaRow.createCell(2).setCellValue("Total: " + typeForms.size() + " forms");
+                metaRow.createCell(2).setCellValue(
+                        t("Total forms", lang) + ": " + typeForms.size() + " " + t("forms", lang));
 
                 sheet.createRow(2); // empty
 
@@ -184,12 +235,16 @@ public class ExcelReportService {
                 // Header row
                 Row headerRow = sheet.createRow(3);
                 List<String> baseHeaders = List.of(
-                        "Form ID", "Status", "Uploaded By", "Uploaded At", "Confirmed By");
+                        t("Form ID", lang),
+                        t("Status", lang),
+                        t("Uploaded By", lang),
+                        t("Uploaded At", lang),
+                        t("Confirmed By", lang));
                 List<String> allHeaders = new ArrayList<>(baseHeaders);
                 allHeaders.addAll(allFieldNames);
 
                 for (int i = 0; i < allHeaders.size(); i++) {
-                    org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                    Cell cell = headerRow.createCell(i);
                     cell.setCellValue(allHeaders.get(i));
                     cell.setCellStyle(headerStyle);
                 }
@@ -199,7 +254,7 @@ public class ExcelReportService {
                 for (Form form : typeForms) {
                     Row row = sheet.createRow(rowNum++);
                     row.createCell(0).setCellValue(form.getId().toString());
-                    row.createCell(1).setCellValue(form.getFormStatus().name());
+                    row.createCell(1).setCellValue(t(form.getFormStatus().name(), lang));
                     row.createCell(2).setCellValue(
                             form.getUploadedBy().getFullName());
                     row.createCell(3).setCellValue(

@@ -31,6 +31,14 @@ public class Form {
     @Column(name = "status", nullable = false)
     private FormStatus formStatus;
 
+    @Builder.Default
+    @Column(name = "validated_by_manager", nullable = false)
+    private Boolean validatedByManager = false;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "validated_by_manager_by")
+    private User validatedByManagerBy;
+
     private String scanUrl;
 
     @Column(nullable = false, updatable = false)

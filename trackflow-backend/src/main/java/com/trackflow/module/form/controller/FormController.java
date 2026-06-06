@@ -115,7 +115,8 @@ public class FormController {
             @RequestParam(required = false) FormStatus formStatus,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
-            @RequestParam(required = false) String actName) {
+            @RequestParam(required = false) String actName,
+            @RequestHeader(value = "Accept-Language", defaultValue = "fr") String lang) {
 
         LocalDateTime fromDate = from != null ?
                 LocalDate.parse(from).atStartOfDay() : null;
@@ -123,7 +124,7 @@ public class FormController {
                 LocalDate.parse(to).atTime(23, 59, 59) : null;
 
         Resource file = formService.exportFormsToExcel(
-                formType, formStatus, fromDate, toDate, actName);
+                formType, formStatus, fromDate, toDate, actName, lang);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -143,7 +144,7 @@ public class FormController {
     }
 
     @PatchMapping("/{id}/fields/bulk")
-    @PreAuthorize("hasRole('FIELD_SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER')")
     public ResponseEntity<Void> updateFields(
             @PathVariable UUID id,
             @RequestBody List<FieldUpdateRequest> updates) {

@@ -1,10 +1,12 @@
 package com.trackflow.module.validation.controller;
 
+import com.trackflow.module.user.entity.User;
 import com.trackflow.module.validation.dto.ValidationResponse;
 import com.trackflow.module.validation.service.ValidationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,9 +20,11 @@ public class ValidationController {
     private final ValidationService validationService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER')")
+    @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<Void> triggerValidation(@PathVariable UUID formId) {
-        validationService.processFormValidation(formId);
+        User currentUser = (User) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        validationService.processFormValidation(formId, currentUser.getId());
         return ResponseEntity.accepted().build();
     }
 

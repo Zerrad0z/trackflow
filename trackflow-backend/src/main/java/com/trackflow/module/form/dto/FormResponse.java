@@ -11,6 +11,8 @@ public record FormResponse(
         UUID id,
         FormType formType,
         FormStatus formStatus,
+        Boolean validatedByManager,
+        UserResponse validatedByManagerBy,
         String scanUrl,
         LocalDateTime uploadedAt,
         LocalDateTime confirmedAt,
