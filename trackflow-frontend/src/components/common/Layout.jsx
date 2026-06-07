@@ -107,7 +107,6 @@ export default function Layout({ children }) {
               <div className="min-w-0">
                 <p className="text-lg font-bold tracking-tight text-white">TrackFlow</p>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-200">
-                  ONCF
                 </p>
               </div>
             )}
