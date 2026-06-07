@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public interface ValidationService {
     void processFormValidation(UUID formId);
+    void processFormValidation(UUID formId, UUID triggeredByUserId);
     ValidationResponse getLatestValidation(UUID formId);
     List<ValidationResponse> getValidationHistory(UUID formId);
     SuggestionDecisionResponse decideSuggestion(UUID suggestionId, SuggestionDecisionRequest request);

@@ -1,9 +1,6 @@
 package com.trackflow.module.form.controller;
 
-import com.trackflow.module.form.dto.AddFieldRequest;
-import com.trackflow.module.form.dto.FormFieldResponse;
-import com.trackflow.module.form.dto.FormFieldSchemaResponse;
-import com.trackflow.module.form.dto.FormResponse;
+import com.trackflow.module.form.dto.*;
 import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.entity.FormType;
 import com.trackflow.module.form.service.FormService;
@@ -118,7 +115,8 @@ public class FormController {
             @RequestParam(required = false) FormStatus formStatus,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
-            @RequestParam(required = false) String actName) {
+            @RequestParam(required = false) String actName,
+            @RequestHeader(value = "Accept-Language", defaultValue = "fr") String lang) {
 
         LocalDateTime fromDate = from != null ?
                 LocalDate.parse(from).atStartOfDay() : null;
@@ -126,7 +124,7 @@ public class FormController {
                 LocalDate.parse(to).atTime(23, 59, 59) : null;
 
         Resource file = formService.exportFormsToExcel(
-                formType, formStatus, fromDate, toDate, actName);
+                formType, formStatus, fromDate, toDate, actName, lang);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -134,5 +132,23 @@ public class FormController {
                 .contentType(MediaType.parseMediaType(
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
+    }
+
+    @PatchMapping("/{id}/infraction-status")
+    @PreAuthorize("hasRole('FIELD_SUPERVISOR')")
+    public ResponseEntity<Void> updateInfractionStatus(
+            @PathVariable UUID id,
+            @RequestBody InfractionStatusRequest request) {
+        formService.updateInfractionStatus(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/fields/bulk")
+    @PreAuthorize("hasAnyRole('FIELD_SUPERVISOR', 'MANAGER')")
+    public ResponseEntity<Void> updateFields(
+            @PathVariable UUID id,
+            @RequestBody List<FieldUpdateRequest> updates) {
+        formService.updateFields(id, updates);
+        return ResponseEntity.noContent().build();
     }
 }

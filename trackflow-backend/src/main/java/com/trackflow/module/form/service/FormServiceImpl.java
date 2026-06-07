@@ -8,10 +8,11 @@ import com.trackflow.module.form.event.FormSubmittedEvent;
 import com.trackflow.module.form.repository.FormFieldRepository;
 import com.trackflow.module.form.repository.FormFieldSchemaRepository;
 import com.trackflow.module.form.repository.FormRepository;
+import com.trackflow.module.notification.entity.NotificationType;
+import com.trackflow.module.notification.service.NotificationService;
 import com.trackflow.module.report.service.ExcelReportService;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.entity.UserRole;
-import com.trackflow.module.user.repository.UserRepository;
 import com.trackflow.module.validation.entity.AiValidation;
 import com.trackflow.module.validation.entity.ValidationStatus;
 import com.trackflow.module.validation.repository.AiValidationRepository;
@@ -55,6 +56,7 @@ public class FormServiceImpl implements FormService {
     private final AiValidationRepository aiValidationRepository;
     private final FieldSuggestionRepository fieldSuggestionRepository;
     private final ExcelReportService excelExportService;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -182,6 +184,12 @@ public class FormServiceImpl implements FormService {
         Form form = formRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Form not found: " + id));
 
+        // Prevent supervisor from reconfirming already confirmed form
+        if (form.getFormStatus() == FormStatus.CONFIRMED) {
+            throw new InvalidOperationException(
+                    "Form has already been confirmed. You cannot confirm it again.");
+        }
+
         AiValidation latestValidation = aiValidationRepository.findByFormAndIsLatestTrue(form)
                 .orElse(null);
         boolean hasCompletedValidationWithoutSuggestions = latestValidation != null
@@ -201,8 +209,17 @@ public class FormServiceImpl implements FormService {
         form.setFormStatus(FormStatus.CONFIRMED);
         form.setConfirmedAt(LocalDateTime.now());
         form.setConfirmedBy(currentUser);
+        Form savedForm = formRepository.save(form);
 
-        return formMapper.toResponse(formRepository.save(form));
+        // Notify all managers that a form has been confirmed
+        notificationService.sendNotificationToManagers(
+                String.format("Form %s from %s has been confirmed and is ready for validation.",
+                        form.getFormType().name().replace('_', ' '),
+                        currentUser.getFullName()),
+                NotificationType.FORM_CONFIRMED_BY_SUPERVISOR,
+                id);
+
+        return formMapper.toResponse(savedForm);
     }
 
     @Override
@@ -221,6 +238,12 @@ public class FormServiceImpl implements FormService {
         if (currentUser.getRole() == UserRole.FIELD_SUPERVISOR
                 && !form.getUploadedBy().getId().equals(currentUser.getId())) {
             throw new InvalidOperationException("You can only archive your own forms");
+        }
+
+        if (currentUser.getRole() == UserRole.MANAGER
+                && form.getFormStatus() != FormStatus.CONFIRMED) {
+            throw new InvalidOperationException(
+                    "Manager can only archive confirmed forms");
         }
 
         form.setFormStatus(FormStatus.ARCHIVED);
@@ -249,6 +272,15 @@ public class FormServiceImpl implements FormService {
     public FormFieldResponse addField(UUID formId, AddFieldRequest request) {
         Form form = formRepository.findById(formId)
                 .orElseThrow(() -> new ResourceNotFoundException("Form not found: " + formId));
+
+        if (formHasBeenValidatedByManager(form)) {
+            throw new InvalidOperationException(
+                    "Cannot add fields to form after manager validation. Form is now locked.");
+        }
+
+        if (form.getFormStatus() == FormStatus.ARCHIVED) {
+            throw new InvalidOperationException("Cannot add fields to archived form");
+        }
 
         FormField field = FormField.builder()
                 .form(form)
@@ -279,7 +311,8 @@ public class FormServiceImpl implements FormService {
     @Override
     @Transactional(readOnly = true)
     public Resource exportFormsToExcel(FormType formType, FormStatus formStatus,
-                                       LocalDateTime from, LocalDateTime to, String actName) {
+                                       LocalDateTime from, LocalDateTime to,
+                                       String actName, String lang) {
 
         User currentUser = getCurrentUser();
         boolean isSupervisor = currentUser.getRole() == UserRole.FIELD_SUPERVISOR;
@@ -299,13 +332,122 @@ public class FormServiceImpl implements FormService {
 
         String filePath = excelExportService.generateDetailedFormReport(
                 forms, fieldsByForm,
-                "Forms Export — " + LocalDate.now());
+                "Forms Export — " + LocalDate.now(),
+                lang);
 
         return new FileSystemResource(Paths.get(filePath));
+    }
+
+    @Transactional
+    @Override
+    public void updateInfractionStatus(UUID formId, InfractionStatusRequest request) {
+        Form form = formRepository.findById(formId)
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found: " + formId));
+
+        User currentUser = getCurrentUser();
+        if (currentUser.getRole() == UserRole.FIELD_SUPERVISOR
+                && formHasBeenValidatedByManager(form)) {
+            throw new InvalidOperationException(
+                    "Cannot update infraction status for form after manager validation. Form is now locked.");
+        }
+
+        List<FormField> fields = formFieldRepository.findByForm(form);
+
+        // Helper to update or create a field
+        updateOrCreateField(form, fields, "statut", request.statut());
+
+        if ("REGULARISEE".equalsIgnoreCase(request.statut())) {
+            if (request.gareReglement() != null)
+                updateOrCreateField(form, fields, "gare_reglement", request.gareReglement());
+            if (request.numPP() != null)
+                updateOrCreateField(form, fields, "num_pp", request.numPP());
+            // montant only for BILLET
+            if (request.montantRegle() != null
+                    && form.getFormType() == FormType.LETTRE_SOMMATION_BILLET)
+                updateOrCreateField(form, fields, "montant_regle",
+                        String.valueOf(request.montantRegle()));
+        }
+    }
+
+    private void updateOrCreateField(Form form, List<FormField> fields,
+                                     String fieldName, String value) {
+        FormField field = fields.stream()
+                .filter(f -> f.getFieldName().equals(fieldName))
+                .findFirst()
+                .orElse(FormField.builder()
+                        .form(form)
+                        .fieldName(fieldName)
+                        .fieldStatus(FieldStatus.PENDING)
+                        .createdAt(LocalDateTime.now())
+                        .build());
+        field.setExtractedValue(value);
+        field.setConfirmedValue(value);
+        field.setFieldStatus(FieldStatus.ACCEPTED);
+        formFieldRepository.save(field);
+    }
+
+    @Transactional
+    @Override
+    public void updateFields(UUID formId, List<FieldUpdateRequest> updates) {
+        Form form = formRepository.findById(formId)
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found"));
+
+        if (form.getFormStatus() == FormStatus.ARCHIVED) {
+            throw new InvalidOperationException("Cannot edit archived form");
+        }
+
+        User currentUser = getCurrentUser();
+        if (currentUser.getRole() == UserRole.MANAGER
+                && form.getFormStatus() != FormStatus.CONFIRMED) {
+            throw new InvalidOperationException(
+                    "Manager can only edit confirmed forms");
+        }
+
+        if (currentUser.getRole() == UserRole.FIELD_SUPERVISOR
+                && formHasBeenValidatedByManager(form)) {
+            throw new InvalidOperationException(
+                    "Supervisor cannot edit form after manager validation. Form is now locked.");
+        }
+
+        List<FormField> existingFields = formFieldRepository.findByForm(form);
+
+        for (FieldUpdateRequest update : updates) {
+            FormField field = existingFields.stream()
+                    .filter(f -> f.getFieldName().equals(update.fieldName()))
+                    .findFirst()
+                    .orElse(FormField.builder()
+                            .form(form)
+                            .fieldName(update.fieldName())
+                            .fieldStatus(FieldStatus.PENDING)
+                            .createdAt(LocalDateTime.now())
+                            .build());
+
+            field.setExtractedValue(update.value());
+            field.setConfirmedValue(update.value());
+            formFieldRepository.save(field);
+        }
+
+        if (currentUser.getRole() == UserRole.MANAGER) {
+            User uploader = form.getUploadedBy();
+            if (uploader != null && !uploader.getId().equals(currentUser.getId())) {
+                notificationService.sendNotification(uploader,
+                        String.format("Your %s form was updated by %s.",
+                                form.getFormType().name().replace('_', ' '),
+                                currentUser.getFullName()),
+                        NotificationType.FORM_EDITED_BY_MANAGER,
+                        formId);
+            }
+        }
+
+        log.info("Updated {} fields for form {}", updates.size(), formId);
     }
 
     private User getCurrentUser() {
         return (User) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
+    }
+
+    private boolean formHasBeenValidatedByManager(Form form) {
+        return form.getValidatedByManager();
     }
 }

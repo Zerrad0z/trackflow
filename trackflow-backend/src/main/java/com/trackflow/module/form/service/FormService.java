@@ -1,9 +1,6 @@
 package com.trackflow.module.form.service;
 
-import com.trackflow.module.form.dto.AddFieldRequest;
-import com.trackflow.module.form.dto.FormFieldResponse;
-import com.trackflow.module.form.dto.FormFieldSchemaResponse;
-import com.trackflow.module.form.dto.FormResponse;
+import com.trackflow.module.form.dto.*;
 import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.entity.FormType;
 import org.springframework.core.io.Resource;
@@ -34,5 +31,11 @@ public interface FormService {
     @Transactional
     FormFieldResponse addField(UUID formId, AddFieldRequest request);
     Resource exportFormsToExcel(FormType formType, FormStatus formStatus,
-                                LocalDateTime from, LocalDateTime to, String actName);
+                                LocalDateTime from, LocalDateTime to,
+                                String actName, String lang);
+    @Transactional
+    void updateInfractionStatus(UUID formId, InfractionStatusRequest request);
+
+    @Transactional
+    void updateFields(UUID formId, List<FieldUpdateRequest> updates);
 }

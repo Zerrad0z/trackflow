@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/common/Layout'
 import { userService } from '../../services/userService'
+import ConfirmDialog from '../../components/common/ConfirmDialog'
+import { useLanguage } from '../../context/LanguageContext'
 import {
   UserPlus, X, MoreVertical, Shield, Power, Key,
   Search, Filter, Users, UserCheck, UserX, Mail,
@@ -11,12 +13,6 @@ import toast from 'react-hot-toast'
 
 const ONCF_ORANGE = '#E8500A'
 const ONCF_BLACK = '#1A1A1A'
-
-const roleLabels = {
-  ADMIN: 'Administrator',
-  MANAGER: 'Manager',
-  FIELD_SUPERVISOR: 'Field Supervisor',
-}
 
 const roleStyles = {
   ADMIN: 'bg-[#1A1A1A] text-white ring-1 ring-black/10',
@@ -31,7 +27,9 @@ const roleIcons = {
 }
 
 export default function UsersPage() {
+  const { t } = useLanguage()
   const [showCreate, setShowCreate] = useState(false)
+  const [showStatusConfirm, setShowStatusConfirm] = useState(null)
   const [showActions, setShowActions] = useState(null)
   const [actionsPosition, setActionsPosition] = useState(null)
   const [showRoleModal, setShowRoleModal] = useState(null)
@@ -46,6 +44,12 @@ export default function UsersPage() {
   })
   const actionsRef = useRef(null)
   const queryClient = useQueryClient()
+
+  const roleLabels = {
+    ADMIN: t('roles.admin'),
+    MANAGER: t('roles.manager'),
+    FIELD_SUPERVISOR: t('roles.supervisor'),
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
@@ -88,9 +92,9 @@ export default function UsersPage() {
       queryClient.invalidateQueries(['users'])
       setShowCreate(false)
       setForm({ fullName: '', email: '', role: 'FIELD_SUPERVISOR' })
-      toast.success('User created successfully!')
+      toast.success(t('users.createSuccess'))
     },
-    onError: (err) => toast.error(err.response?.data?.message || 'Failed to create user')
+    onError: (err) => toast.error(err.response?.data?.message || t('users.createFailed'))
   })
 
   const roleMutation = useMutation({
@@ -99,18 +103,18 @@ export default function UsersPage() {
       queryClient.invalidateQueries(['users'])
       setShowRoleModal(null)
       setNewRole('')
-      toast.success('Role updated successfully!')
+      toast.success(t('users.roleUpdateSuccess'))
     },
-    onError: () => toast.error('Failed to update role')
+    onError: () => toast.error(t('users.roleUpdateFailed'))
   })
 
   const statusMutation = useMutation({
     mutationFn: ({ id, isActive }) => userService.updateStatus(id, isActive),
     onSuccess: () => {
       queryClient.invalidateQueries(['users'])
-      toast.success('User status updated!')
+      toast.success(t('users.statusUpdateSuccess'))
     },
-    onError: () => toast.error('Failed to update status')
+    onError: () => toast.error(t('users.statusUpdateFailed'))
   })
 
   const passwordMutation = useMutation({
@@ -119,9 +123,9 @@ export default function UsersPage() {
       queryClient.invalidateQueries(['users'])
       setShowPasswordModal(null)
       setNewPassword('')
-      toast.success('Password reset successfully!')
+      toast.success(t('users.passwordResetSuccess'))
     },
-    onError: () => toast.error('Failed to reset password')
+    onError: () => toast.error(t('users.passwordResetFailed'))
   })
 
   useEffect(() => {
@@ -223,13 +227,13 @@ export default function UsersPage() {
               <div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-100">
                   <BadgeCheck size={13} />
-                  ONCF Administration
+                  {t('users.administration')}
                 </div>
                 <h2 className="text-3xl font-semibold tracking-tight text-white">
-                  User Management
+                  {t('users.title')}
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-300">
-                  Manage field supervisors, managers, and administrators across TrackFlow operations.
+                  {t('users.description')}
                 </p>
               </div>
               <button
@@ -238,16 +242,16 @@ export default function UsersPage() {
                 style={{ backgroundColor: ONCF_ORANGE }}
               >
                 <UserPlus size={17} />
-                New User
+                {t('users.newUser')}
               </button>
             </div>
           </div>
 
           <div className="grid gap-3 border-t border-black/5 bg-gray-50 p-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard icon={Users} label="Total Users" value={stats.total} tone="bg-gray-100 text-gray-700" />
-            <StatCard icon={UserCheck} label="Active" value={stats.active} tone="bg-emerald-50 text-emerald-700" />
-            <StatCard icon={UserX} label="Inactive" value={stats.inactive} tone="bg-red-50 text-red-700" />
-            <StatCard icon={Crown} label="Admins" value={stats.admins} tone="bg-orange-50 text-[#E8500A]" />
+            <StatCard icon={Users} label={t('users.stats.totalUsers')} value={stats.total} tone="bg-gray-100 text-gray-700" />
+            <StatCard icon={UserCheck} label={t('users.stats.active')} value={stats.active} tone="bg-emerald-50 text-emerald-700" />
+            <StatCard icon={UserX} label={t('users.stats.inactive')} value={stats.inactive} tone="bg-red-50 text-red-700" />
+            <StatCard icon={Crown} label={t('users.stats.admins')} value={stats.admins} tone="bg-orange-50 text-[#E8500A]" />
           </div>
         </section>
 
@@ -259,7 +263,7 @@ export default function UsersPage() {
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, email, or role"
+                placeholder={t('users.searchPlaceholder')}
                 className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-3 text-sm text-gray-900 outline-none transition focus:border-[#E8500A] focus:bg-white focus:ring-2 focus:ring-orange-100"
               />
             </div>
@@ -272,10 +276,10 @@ export default function UsersPage() {
                   onChange={(e) => setRoleFilter(e.target.value)}
                   className="h-10 rounded-lg border border-gray-200 bg-white pl-9 pr-8 text-sm font-medium text-gray-700 outline-none focus:border-[#E8500A] focus:ring-2 focus:ring-orange-100"
                 >
-                  <option value="ALL">All roles</option>
-                  <option value="ADMIN">Administrators</option>
-                  <option value="MANAGER">Managers</option>
-                  <option value="FIELD_SUPERVISOR">Field supervisors</option>
+                  <option value="ALL">{t('users.filters.allRoles')}</option>
+                  <option value="ADMIN">{t('users.filters.administrators')}</option>
+                  <option value="MANAGER">{t('users.filters.managers')}</option>
+                  <option value="FIELD_SUPERVISOR">{t('users.filters.supervisors')}</option>
                 </select>
               </div>
               <select
@@ -283,9 +287,9 @@ export default function UsersPage() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="h-10 rounded-lg border border-gray-200 bg-white px-3 pr-8 text-sm font-medium text-gray-700 outline-none focus:border-[#E8500A] focus:ring-2 focus:ring-orange-100"
               >
-                <option value="ALL">All statuses</option>
-                <option value="ACTIVE">Active only</option>
-                <option value="INACTIVE">Inactive only</option>
+                <option value="ALL">{t('users.filters.allStatuses')}</option>
+                <option value="ACTIVE">{t('users.filters.activeOnly')}</option>
+                <option value="INACTIVE">{t('users.filters.inactiveOnly')}</option>
               </select>
             </div>
           </div>
@@ -302,20 +306,30 @@ export default function UsersPage() {
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-[#E8500A]">
                   <Users size={22} />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-950">No users found</h3>
+                <h3 className="text-sm font-semibold text-gray-950">{t('users.noUsersFound')}</h3>
                 <p className="mt-1 max-w-sm text-sm text-gray-500">
-                  Adjust the search or filters to find the account you need.
+                  {t('users.adjustFilters')}
                 </p>
               </div>
             ) : (
               <table className="w-full min-w-[860px]">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/80">
-                    {['User', 'Email', 'Role', 'Status', 'Actions'].map(h => (
-                      <th key={h} className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
-                        {h}
-                      </th>
-                    ))}
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      {t('users.table.user')}
+                    </th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      {t('users.table.email')}
+                    </th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      {t('users.table.role')}
+                    </th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      {t('users.table.status')}
+                    </th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      {t('users.table.actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -348,7 +362,7 @@ export default function UsersPage() {
                             : 'bg-red-50 text-red-700 ring-red-100'
                         }`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                          {user.isActive ? 'Active' : 'Inactive'}
+                          {user.isActive ? t('users.status.active') : t('users.status.inactive')}
                         </span>
                       </td>
                       <td className="px-5 py-4">
@@ -356,11 +370,11 @@ export default function UsersPage() {
                           data-actions-trigger
                           onClick={(e) => toggleActions(user.id, e.currentTarget)}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-gray-500 transition hover:border-gray-200 hover:bg-white hover:text-gray-950"
-                          aria-label={`Open actions for ${user.fullName}`}
+                          aria-label={t('users.openActions', { name: user.fullName })}
                         >
                           <MoreVertical size={17} />
                         </button>
-                      </td>
+                       </td>
                     </tr>
                   ))}
                 </tbody>
@@ -371,11 +385,11 @@ export default function UsersPage() {
       </div>
 
       {showCreate && (
-        <UserModal title="Create User" onClose={() => setShowCreate(false)}>
+        <UserModal title={t('users.createUser')} onClose={() => setShowCreate(false)}>
           <div className="space-y-4">
             {[
-              { label: 'Full Name', key: 'fullName', type: 'text' },
-              { label: 'Email', key: 'email', type: 'email' },
+              { label: t('users.form.fullName'), key: 'fullName', type: 'text' },
+              { label: t('users.form.email'), key: 'email', type: 'email' },
             ].map(field => (
               <Field key={field.key} label={field.label}>
                 <input
@@ -386,62 +400,62 @@ export default function UsersPage() {
                 />
               </Field>
             ))}
-            <Field label="Role">
+            <Field label={t('users.form.role')}>
               <select
                 value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
                 className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#E8500A] focus:ring-2 focus:ring-orange-100"
               >
-                <option value="FIELD_SUPERVISOR">Field Supervisor</option>
-                <option value="MANAGER">Manager</option>
-                <option value="ADMIN">Admin</option>
+                <option value="FIELD_SUPERVISOR">{t('roles.supervisor')}</option>
+                <option value="MANAGER">{t('roles.manager')}</option>
+                <option value="ADMIN">{t('roles.admin')}</option>
               </select>
             </Field>
             <PrimaryButton
               onClick={() => createMutation.mutate(form)}
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating...' : 'Create User'}
+              {createMutation.isPending ? t('users.creating') : t('users.createUser')}
             </PrimaryButton>
           </div>
         </UserModal>
       )}
 
       {showRoleModal && (
-        <UserModal title="Change Role" onClose={() => setShowRoleModal(null)} compact>
+        <UserModal title={t('users.changeRole')} onClose={() => setShowRoleModal(null)} compact>
           <p className="mb-4 text-sm text-gray-500">
-            Changing role for <strong className="text-gray-950">{showRoleModal.fullName}</strong>
+            {t('users.changingRoleFor')} <strong className="text-gray-950">{showRoleModal.fullName}</strong>
           </p>
-          <Field label="New role">
+          <Field label={t('users.form.newRole')}>
             <select
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}
               className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#E8500A] focus:ring-2 focus:ring-orange-100"
             >
-              <option value="">Select role...</option>
-              <option value="FIELD_SUPERVISOR">Field Supervisor</option>
-              <option value="MANAGER">Manager</option>
-              <option value="ADMIN">Admin</option>
+              <option value="">{t('users.form.selectRole')}</option>
+              <option value="FIELD_SUPERVISOR">{t('roles.supervisor')}</option>
+              <option value="MANAGER">{t('roles.manager')}</option>
+              <option value="ADMIN">{t('roles.admin')}</option>
             </select>
           </Field>
           <PrimaryButton
             onClick={() => roleMutation.mutate({ id: showRoleModal.id, role: newRole })}
             disabled={!newRole || roleMutation.isPending}
           >
-            Update Role
+            {t('users.updateRole')}
           </PrimaryButton>
         </UserModal>
       )}
 
       {showPasswordModal && (
-        <UserModal title="Reset Password" onClose={() => setShowPasswordModal(null)} compact>
+        <UserModal title={t('users.resetPassword')} onClose={() => setShowPasswordModal(null)} compact>
           <p className="mb-4 text-sm text-gray-500">
-            Reset password for <strong className="text-gray-950">{showPasswordModal.fullName}</strong>
+            {t('users.resettingPasswordFor')} <strong className="text-gray-950">{showPasswordModal.fullName}</strong>
           </p>
-          <Field label="New password">
+          <Field label={t('users.form.newPassword')}>
             <input
               type="password"
-              placeholder="Enter a secure password"
+              placeholder={t('users.form.enterPassword')}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#E8500A] focus:ring-2 focus:ring-orange-100"
@@ -451,10 +465,28 @@ export default function UsersPage() {
             onClick={() => passwordMutation.mutate({ id: showPasswordModal.id, password: newPassword })}
             disabled={!newPassword || passwordMutation.isPending}
           >
-            Reset Password
+            {t('users.resetPassword')}
           </PrimaryButton>
         </UserModal>
       )}
+
+      <ConfirmDialog
+        isOpen={!!showStatusConfirm}
+        title={showStatusConfirm?.isActive ? t('users.deactivateUser') : t('users.activateUser')}
+        message={showStatusConfirm?.isActive
+          ? t('users.deactivateConfirm', { name: showStatusConfirm?.fullName })
+          : t('users.activateConfirm', { name: showStatusConfirm?.fullName })}
+        confirmLabel={showStatusConfirm?.isActive ? t('users.deactivate') : t('users.activate')}
+        danger={showStatusConfirm?.isActive}
+        onConfirm={() => {
+          statusMutation.mutate({
+            id: showStatusConfirm.id,
+            isActive: !showStatusConfirm.isActive
+          })
+          setShowStatusConfirm(null)
+        }}
+        onCancel={() => setShowStatusConfirm(null)}
+      />
 
       {showActions && actionsPosition && (() => {
         const user = users.find(u => u.id === showActions)
@@ -471,16 +503,16 @@ export default function UsersPage() {
             }}
           >
             <ActionButton icon={Shield} onClick={() => openRoleModal(user)}>
-              Change Role
+              {t('users.actions.changeRole')}
             </ActionButton>
             <ActionButton
               icon={Power}
               onClick={() => {
-                statusMutation.mutate({ id: user.id, isActive: !user.isActive })
+                setShowStatusConfirm(user)
                 closeActions()
               }}
             >
-              {user.isActive ? 'Deactivate' : 'Activate'}
+              {user.isActive ? t('users.actions.deactivate') : t('users.actions.activate')}
             </ActionButton>
             <ActionButton
               icon={Key}
@@ -489,7 +521,7 @@ export default function UsersPage() {
                 closeActions()
               }}
             >
-              Reset Password
+              {t('users.actions.resetPassword')}
             </ActionButton>
           </div>
         )

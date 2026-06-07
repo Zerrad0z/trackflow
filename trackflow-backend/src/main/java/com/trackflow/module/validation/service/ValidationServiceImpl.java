@@ -10,6 +10,8 @@ import com.trackflow.module.form.entity.FormField;
 import com.trackflow.module.form.entity.FormStatus;
 import com.trackflow.module.form.repository.FormFieldRepository;
 import com.trackflow.module.form.repository.FormRepository;
+import com.trackflow.module.user.entity.User;
+import com.trackflow.module.user.repository.UserRepository;
 import com.trackflow.module.validation.dto.*;
 import com.trackflow.module.validation.entity.AiValidation;
 import com.trackflow.module.validation.entity.FieldSuggestion;
@@ -37,6 +39,7 @@ public class ValidationServiceImpl implements ValidationService {
     private final FormFieldRepository formFieldRepository;
     private final AiValidationRepository aiValidationRepository;
     private final FieldSuggestionRepository fieldSuggestionRepository;
+    private final UserRepository userRepository;
     private final GroqService groqService;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -45,9 +48,20 @@ public class ValidationServiceImpl implements ValidationService {
     @Override
     @Transactional
     public void processFormValidation(UUID formId) {
+        processFormValidation(formId, null);
+    }
+
+    @Override
+    @Transactional
+    public void processFormValidation(UUID formId, UUID triggeredByUserId) {
         // 1. Find form by ID
         Form form = formRepository.findById(formId)
                 .orElseThrow(() -> new RuntimeException("Form not found: " + formId));
+
+        if (triggeredByUserId != null && form.getFormStatus() != FormStatus.CONFIRMED) {
+            throw new InvalidOperationException(
+                    "Manager can only validate confirmed forms");
+        }
 
         // 2. Mark existing validations as SUPERSEDED
         List<AiValidation> existingValidations = aiValidationRepository.findByFormOrderByRunAtDesc(form);
@@ -104,19 +118,34 @@ public class ValidationServiceImpl implements ValidationService {
                     .toList();
 
             fieldSuggestionRepository.saveAll(fieldSuggestions);
-            form.setFormStatus(FormStatus.PENDING_CONFIRMATION);
-            formRepository.save(form);
 
             // 8. Update validation status to COMPLETED
             validation.setStatus(ValidationStatus.COMPLETED);
             aiValidationRepository.save(validation);
+
+            // 9. If this validation was triggered by the system (uploader flow),
+            //    mark the form as awaiting supervisor confirmation so the
+            //    uploader can review AI suggestions and confirm the form.
+            //    If a manager triggers validation, keep the form CONFIRMED and
+            //    record that the manager has completed validation.
+            if (triggeredByUserId == null) {
+                form.setFormStatus(FormStatus.PENDING_CONFIRMATION);
+            } else {
+                User manager = userRepository.findById(triggeredByUserId)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Manager user not found: " + triggeredByUserId));
+                form.setValidatedByManager(true);
+                form.setValidatedByManagerBy(manager);
+            }
+            formRepository.save(form);
             eventPublisher.publishEvent(new ValidationCompleteEvent(
                     form.getId(),
                     validation.getId(),
                     form.getUploadedBy().getId(),
                     form.getFormType().name(),
                     ValidationStatus.COMPLETED,
-                    fieldSuggestions.size()
+                    fieldSuggestions.size(),
+                    triggeredByUserId
             ));
 
             log.info("Validation completed for form {} — {} suggestions saved",

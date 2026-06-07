@@ -37,9 +37,15 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException("Invalid credentials");
         }
 
-        // Activate on first login
-        if (!user.getIsActive()) {
+        if (!user.getIsActive() && user.getFirstLoginDone()) {
+            throw new InvalidCredentialsException(
+                    "Account is deactivated. Contact your administrator.");
+        }
+
+        // First login activation
+        if (!user.getIsActive() && !user.getFirstLoginDone()) {
             user.setIsActive(true);
+            user.setFirstLoginDone(true);
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
             log.info("User {} activated on first login", user.getEmail());

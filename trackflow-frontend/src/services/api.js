@@ -14,6 +14,9 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // Send language preference
+    const language = localStorage.getItem('language') || 'fr'
+    config.headers['Accept-Language'] = language
     return config
   },
   (error) => Promise.reject(error)
@@ -24,9 +27,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+      if (!window.location.pathname.includes('/login')) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

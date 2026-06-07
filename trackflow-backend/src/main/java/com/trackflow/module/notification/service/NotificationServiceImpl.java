@@ -3,6 +3,7 @@ package com.trackflow.module.notification.service;
 import com.trackflow.common.exception.ResourceNotFoundException;
 import com.trackflow.module.notification.dto.NotificationResponse;
 import com.trackflow.module.notification.entity.Notification;
+import com.trackflow.module.notification.entity.NotificationType;
 import com.trackflow.module.notification.repository.NotificationRepository;
 import com.trackflow.module.user.entity.User;
 import com.trackflow.module.user.repository.UserRepository;
@@ -37,27 +38,25 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public void sendNotification(User user, String message) {
-        // 1. Save to DB
+    public void sendNotification(User user, String message, NotificationType type, UUID referenceId) {
         Notification notification = Notification.builder()
                 .user(user)
                 .message(message)
+                .notificationType(type)
+                .referenceId(referenceId)
                 .isRead(false)
                 .sentAt(LocalDateTime.now())
                 .build();
         notificationRepository.save(notification);
+
+        NotificationResponse response = toResponse(notification);
 
         // 2. WebSocket push
         try {
             messagingTemplate.convertAndSendToUser(
                     user.getEmail(),
                     "/queue/notifications",
-                    new NotificationResponse(
-                            notification.getId(),
-                            notification.getMessage(),
-                            notification.getIsRead(),
-                            notification.getSentAt()
-                    )
+                    response
             );
             log.info("WebSocket notification sent to: {}", user.getEmail());
         } catch (Exception e) {
@@ -78,13 +77,24 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
+    @Override
+    @Transactional
+    public void sendNotificationToManagers(String message, NotificationType type, UUID referenceId) {
+        // Get all managers
+        List<User> managers = userRepository.findByRole(com.trackflow.module.user.entity.UserRole.MANAGER);
+        
+        // Send notification to each manager
+        for (User manager : managers) {
+            sendNotification(manager, message, type, referenceId);
+        }
+    }
+
    @Override
 @Transactional(readOnly = true)
 public Page<NotificationResponse> getMyNotifications(Pageable pageable) {
     User currentUser = getCurrentUser();
     return notificationRepository.findByUserOrderBySentAtDesc(currentUser, pageable)
-            .map(n -> new NotificationResponse(
-                    n.getId(), n.getMessage(), n.getIsRead(), n.getSentAt()));
+            .map(this::toResponse);
 }
 
     @Override
@@ -117,5 +127,16 @@ public Page<NotificationResponse> getMyNotifications(Pageable pageable) {
     private User getCurrentUser() {
         return (User) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
+    }
+
+    private NotificationResponse toResponse(Notification notification) {
+        return new NotificationResponse(
+                notification.getId(),
+                notification.getMessage(),
+                notification.getNotificationType(),
+                notification.getReferenceId(),
+                notification.getIsRead(),
+                notification.getSentAt()
+        );
     }
 }
