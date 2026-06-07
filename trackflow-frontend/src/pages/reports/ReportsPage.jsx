@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '../../components/common/Layout'
 import { reportService } from '../../services/reportService'
+import { useLanguage } from '../../context/LanguageContext'
 import { Download, Plus, X, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 
 export default function ReportsPage() {
+  const { t } = useLanguage()
   const [showGenerate, setShowGenerate] = useState(false)
   const [reportType, setReportType] = useState('WEEKLY')
   const [format, setFormat] = useState('PDF')
@@ -18,14 +20,14 @@ export default function ReportsPage() {
   })
 
   const generateMutation = useMutation({
-  mutationFn: (data) => reportService.generateReport(data),
-  onSuccess: () => {
-    queryClient.invalidateQueries(['reports'])
-    setShowGenerate(false)
-    toast.success('Report generated successfully!')
-  },
-  onError: () => toast.error('Failed to generate report')
-})
+    mutationFn: (data) => reportService.generateReport(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['reports'])
+      setShowGenerate(false)
+      toast.success(t('reports.generateSuccess'))
+    },
+    onError: () => toast.error(t('reports.generateFailed'))
+  })
 
   const handleDownload = async (reportId, reportType) => {
     try {
@@ -47,14 +49,14 @@ export default function ReportsPage() {
   return (
     <Layout>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Reports</h2>
+        <h2 className="text-xl font-semibold text-gray-800">{t('reports.title')}</h2>
         <button
           onClick={() => setShowGenerate(true)}
           className="flex items-center gap-2 bg-blue-600 text-white
                      px-4 py-2 rounded-lg hover:bg-blue-700 transition"
         >
           <Plus size={18} />
-          Generate Report
+          {t('reports.generateReport')}
         </button>
       </div>
 
@@ -64,7 +66,7 @@ export default function ReportsPage() {
                         items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Generate Report</h3>
+              <h3 className="text-lg font-semibold">{t('reports.generateReport')}</h3>
               <button onClick={() => setShowGenerate(false)}>
                 <X size={20} className="text-gray-500" />
               </button>
@@ -72,7 +74,7 @@ export default function ReportsPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Report Type
+                  {t('reports.reportType')}
                 </label>
                 <select
                   value={reportType}
@@ -81,14 +83,14 @@ export default function ReportsPage() {
                              px-3 py-2 focus:outline-none focus:ring-2
                              focus:ring-blue-500"
                 >
-                  <option value="DAILY">Daily</option>
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="MONTHLY">Monthly</option>
+                  <option value="DAILY">{t('reports.daily')}</option>
+                  <option value="WEEKLY">{t('reports.weekly')}</option>
+                  <option value="MONTHLY">{t('reports.monthly')}</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Format
+                  {t('reports.format')}
                 </label>
                 <div className="flex gap-3">
                   {['PDF', 'EXCEL'].map(f => (
@@ -111,7 +113,7 @@ export default function ReportsPage() {
                 className="w-full bg-blue-600 text-white py-2 rounded-lg
                            hover:bg-blue-700 transition disabled:opacity-50"
               >
-                {generateMutation.isPending ? 'Generating...' : 'Generate'}
+                {generateMutation.isPending ? t('reports.generating') : t('reports.generate')}
               </button>
             </div>
           </div>
@@ -121,23 +123,23 @@ export default function ReportsPage() {
       {/* Reports List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading reports...</div>
+          <div className="p-8 text-center text-gray-500">{t('reports.loading')}</div>
         ) : reports.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No reports yet.
+            {t('reports.noReports')}
           </div>
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="text-left px-6 py-3 text-xs font-medium
-                               text-gray-500 uppercase">Type</th>
+                               text-gray-500 uppercase">{t('reports.type')}</th>
                 <th className="text-left px-6 py-3 text-xs font-medium
-                               text-gray-500 uppercase">Generated By</th>
+                               text-gray-500 uppercase">{t('reports.generatedBy')}</th>
                 <th className="text-left px-6 py-3 text-xs font-medium
-                               text-gray-500 uppercase">Date</th>
+                               text-gray-500 uppercase">{t('common.date')}</th>
                 <th className="text-left px-6 py-3 text-xs font-medium
-                               text-gray-500 uppercase">Actions</th>
+                               text-gray-500 uppercase">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -147,7 +149,7 @@ export default function ReportsPage() {
                     <div className="flex items-center gap-2">
                       <FileText size={16} className="text-gray-400" />
                       <span className="text-sm font-medium text-gray-900">
-                        {report.reportType}
+                        {t(`reports.${report.reportType.toLowerCase()}`) || report.reportType}
                       </span>
                     </div>
                   </td>
@@ -164,7 +166,7 @@ export default function ReportsPage() {
                                  hover:text-blue-800 text-sm"
                     >
                       <Download size={16} />
-                      Download
+                      {t('reports.download')}
                     </button>
                   </td>
                 </tr>

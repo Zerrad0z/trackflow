@@ -14,6 +14,9 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // Send language preference
+    const language = localStorage.getItem('language') || 'fr'
+    config.headers['Accept-Language'] = language
     return config
   },
   (error) => Promise.reject(error)
