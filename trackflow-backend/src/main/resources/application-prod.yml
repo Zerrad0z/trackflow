@@ -39,3 +39,11 @@ logging:
   level:
     com.trackflow: INFO
     org.springframework.security: WARN
+
+springdoc:
+  swagger-ui:
+    url: /api-docs
+  use-management-port: false
+
+server:
+  forward-headers-strategy: framework
