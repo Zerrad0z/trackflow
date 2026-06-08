@@ -18,4 +18,4 @@ RUN apt-get update && apt-get install -y \
 COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-Xmx400m", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Xmx400m", "-Dspring.profiles.active=prod", "-DTESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata", "-jar", "app.jar"]

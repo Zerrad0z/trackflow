@@ -15,6 +15,9 @@ public class OcrService {
     public OcrService() {
         this.tesseract = new Tesseract();
         String tessdata = System.getenv("TESSDATA_PREFIX");
+        if (tessdata == null) {
+            tessdata = System.getProperty("TESSDATA_PREFIX");
+        }
         if (tessdata != null) {
             this.tesseract.setDatapath(tessdata);
         }
