@@ -17,7 +17,8 @@ public class CorsConfig {
                         .allowedOrigins("https://trackflow-jade.vercel.app")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
-                        .allowCredentials(true);
+                        .allowCredentials(true)
+                        .maxAge(3000);
             }
         };
     }
