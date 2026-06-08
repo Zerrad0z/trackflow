@@ -8,8 +8,15 @@ export default function ProtectedRoute({ children, roles }) {
 
   if (!user) return <Navigate to="/login" />
 
+  if (user.role === 'ADMIN' && window.location.pathname === '/dashboard') {
+    return <Navigate to="/users" replace />
+  }
+
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/dashboard" />
+    if (user.role === 'ADMIN') {
+      return <Navigate to="/users" replace />
+    }
+    return <Navigate to="/dashboard" replace />
   }
 
   return children
