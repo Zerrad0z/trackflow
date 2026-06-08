@@ -41,6 +41,10 @@ TrackFlow replaces this entirely with:
 - **Real-time notifications** via WebSocket and email
 - **Full audit trail** with Spring AOP
 
+## Live Demo
+- **Frontend:** https://trackflow-jade.vercel.app
+- **API Docs:** https://track-flow-production.up.railway.app/api/v1/swagger-ui/index.html
+
 ---
 
 ## Screenshots
