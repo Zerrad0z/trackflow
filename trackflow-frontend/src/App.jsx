@@ -25,7 +25,7 @@ function App() {
           
           {/* Protected routes */}
           <Route path="/dashboard" element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['FIELD_SUPERVISOR', 'MANAGER']}>
               <DashboardPage />
             </ProtectedRoute>
           } />
