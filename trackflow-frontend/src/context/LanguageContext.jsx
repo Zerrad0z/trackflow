@@ -330,7 +330,7 @@ const translations = {
       signingIn: 'Connexion...',
       invalidCredentials: 'Identifiants invalides',
       platformDescription: 'Plateforme de digitalisation des formulaires terrain et de validation par IA',
-      footer: 'TrackFlow — Plateforme des opérations terrain ONCF',
+      footer: 'TrackFlow — Plateforme des opérations terrain',
       features: [
         'Numérisation OCR des formulaires',
         'Validation par IA',
