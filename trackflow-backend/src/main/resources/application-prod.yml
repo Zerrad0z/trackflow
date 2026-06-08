@@ -27,8 +27,8 @@ jwt:
 groq:
   api:
     key: ${GROQ_API_KEY}
-    url: https://api.groq.com/openai/v1/chat/completions
-    model: llama-3.3-70b-versatile
+    url: ${GROQ_API_URL}
+    model: ${GROQ_API_MODEL}
 
 management:
   health:
