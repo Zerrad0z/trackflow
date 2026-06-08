@@ -14,22 +14,22 @@ export default function LoginPage() {
   const { t } = useLanguage()
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    try {
-      const user = await login({ email, password })
-      if (user.role === 'ADMIN') {
-        navigate('/users')
-      } else {
-        navigate('/dashboard')
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || t('login.invalidCredentials'))
-    } finally {
-      setLoading(false)
+  e.preventDefault()
+  setError('')
+  setLoading(true)
+  try {
+    const user = await login({ email, password })
+    if (user.role === 'ADMIN') {
+      navigate('/users', { replace: true })
+    } else {
+      navigate('/dashboard', { replace: true })
     }
+  } catch (err) {
+    setError(err.response?.data?.message || t('login.invalidCredentials'))
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: '#1A1A1A' }}>
