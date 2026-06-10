@@ -224,7 +224,7 @@ cd trackflow
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://YOUR_HOST/neondb?sslmode=require
+    url: jdbc:postgresql://DB_HOST/neondb?sslmode=require
     username: USERNAME
     password: PASSWORD
   mail:
