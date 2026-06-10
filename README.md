@@ -101,12 +101,6 @@ TrackFlow replaces this entirely with:
 - Domain-specific rules: ONCF station names, train durations, date formats
 - Human-in-the-loop: `ACCEPT` / `REJECT` / `OVERRIDE` suggestions
 
-### ◈ Infraction Status (Lettre de Sommation)
-- Supervisors fill in infraction status manually
-- `Régularisée` → Gare de Réglement + N° PP + Montant (Billet only)
-- `Non Régularisée` → direct confirmation
-- Locked after form confirmation
-
 ### ◈ Notifications
 - Real-time WebSocket notifications (STOMP)
 - Email notifications via Spring Mail (Mailtrap/Brevo)
